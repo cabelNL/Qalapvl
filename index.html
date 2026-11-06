@@ -850,6 +850,8 @@ sched();
 .qm-price{font-size:20px;font-weight:800}
 .qm-stars{color:#f2a516;letter-spacing:1px}
 .qm-muted{color:#5a6a7e;font-size:13px}
+#qm-nb{position:fixed;left:12px;right:12px;bottom:76px;z-index:9000;background:#b42318;color:#fff;border-radius:14px;padding:12px 14px;text-align:center;font-weight:700;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.qm-dot{position:absolute;top:2px;right:18%;min-width:18px;height:18px;border-radius:9px;background:#b42318;color:#fff;font:700 11px/18px system-ui;text-align:center;padding:0 5px}
 .qm-promo{display:block;background:#fff6e0;border:1px solid #f2a516;border-radius:14px;padding:12px 14px;color:#15202e;text-decoration:none;margin:10px 0}
 .qm-promo:hover{text-decoration:none}
 .qm-rev{border-top:1px solid #e0e6ee;padding:10px 0}
@@ -1059,14 +1061,14 @@ VIEWS["/master"]=async function(){
   var u=me();if(!u)return head("Кабинет электрика","/masters")+'<div class="qm-card"><p>Войдите в аккаунт или зарегистрируйтесь, затем заполните анкету электрика: специальность и навыки.</p><div class="qm-row"><a class="btn btn-primary" href="#/login">Войти</a><a class="btn btn-secondary" href="#/register">Регистрация</a></div></div>';
   var m=await myMaster();
   if(!m)return head("Кабинет электрика","/masters")+'<div class="qm-card"><p>Вы ещё не зарегистрированы как электрик.</p><a class="btn btn-primary" href="#/masters/new">Стать электриком</a></div>';
-  var tab=qs().get("t")||"new",h=head("Кабинет электрика","/masters")+'<div class="qm-row">'+stBadge(m.status)+'<a href="#/masters/new">Изменить анкету</a></div>';
+  var tab=qs().get("t")||"new",h=head("Кабинет электрика","/masters")+'<div class="qm-row">'+stBadge(m.status)+'<a href="#/masters/new">Изменить анкету</a>'+(("Notification" in window&&Notification.permission==="default")?'<button class="btn btn-secondary btn-sm" data-act="notif">🔔 Включить оповещения</button>':'')+'</div>';
   if(m.status!=="approved")return h+'<div class="qm-card" style="margin-top:10px">'+(m.status==="pending"?"Анкета на проверке у администратора. После одобрения вы сможете брать заявки.":"Анкета отклонена."+(m.note?" Причина: "+esc(m.note):""))+'</div>';
   var mine=(await gQuery("orders",[["masterId","==",u.uid]])).sort(function(a,b){return b.createdAt-a.createdAt});
   var unpaid=mine.filter(function(o){return o.status==="done"&&!o.feePaid}),debt=unpaid.reduce(function(s,o){return s+feeOf(o)},0);
   h+='<div class="qm-tabs"><a class="'+(tab==="new"?"on":"")+'" href="#/master?t=new">Новые</a><a class="'+(tab==="mine"?"on":"")+'" href="#/master?t=mine">Мои заказы</a><a class="'+(tab==="wallet"?"on":"")+'" href="#/master?t=wallet">Кошелёк'+(debt?' · '+money(debt):'')+'</a></div>';
   if(tab==="new"){
     if(unpaid.length>=DEBT_LIMIT)h+='<div class="qm-card" style="border-color:#b42318;margin-bottom:10px">Новые заявки недоступны: неоплачено заказов — '+unpaid.length+'. Оплатите комиссию во вкладке «Кошелёк».</div>';
-    var list=await openFor(m);
+    var list=await openFor(m);try{localStorage.setItem("qm:seen:"+u.uid,String(Date.now()))}catch(e){}NEWC=0;applyBadge();
     if(!list.length)h+='<div class="qm-card qm-muted">Сейчас нет подходящих заявок.</div>';
     h+='<div style="display:grid;gap:10px">'+list.map(function(o){return '<div class="qm-card"><div class="qm-row qm-between"><b>'+esc(o.title)+'</b>'+(o.targetMasterId?'<span class="qm-st warn">Лично вам</span>':'')+'</div>'+
      '<div class="qm-muted">'+esc(o.spec)+(o.district?' · '+esc(o.district):'')+' · '+dt(o.createdAt)+'</div>'+(o.descr?'<div style="margin:6px 0">'+esc(o.descr)+'</div>':'')+phs(o)+
@@ -1115,9 +1117,10 @@ var ACT={
   async cancel(id){if(!confirm("Отменить заявку?"))return;await gPatch("orders",id,{status:"cancelled",updatedAt:Date.now()});toast("Заявка отменена")},
   async cancelTaken(id){if(!confirm("Отменить заказ? Мастер уже взял его.")) return;await gPatch("orders",id,{status:"cancelled",updatedAt:Date.now()});toast("Заказ отменён")},
   async done(id){if(!confirm("Подтвердить, что работа выполнена? Мастеру будет начислена комиссия."))return;await gPatch("orders",id,{status:"done",doneAt:Date.now(),updatedAt:Date.now()});toast("Заказ выполнен. Спасибо!")},
+  async notif(){var r=await Notification.requestPermission();toast(r==="granted"?"Оповещения включены (работают, пока сайт открыт)":"Оповещения не разрешены в браузере")},
   async take(id){var u=me(),m=await myMaster();if(!m||m.status!=="approved"){toast("Анкета ещё не одобрена",1);return}
     var o=await gGet("orders",id);if(!confirm("Взять заказ за "+money(o.price)+"?\nПосле выполнения вы заплатите комиссию "+money(Math.round(o.price*FEE_RATE))+"."))return;
-    await takeTx(id,u.uid,m.name);toast("Заказ ваш. Контакты клиента — во вкладке «Мои заказы»");location.hash="#/master?t=mine"},
+    await takeTx(id,u.uid,m.name);toast("Заказ ваш. Контакты клиента — во вкладке «Мои заказы»");cur="";location.hash="#/master?t=mine";setTimeout(function(){render(true).catch(function(){})},50)},
   hide(id){var h=[];try{h=JSON.parse(localStorage.getItem("qm:hidden")||"[]")}catch(e){}h.push(id);try{localStorage.setItem("qm:hidden",JSON.stringify(h))}catch(e){}},
   async mApprove(id){await gPatch("masters",id,{status:"approved",note:""});toast("Мастер одобрен")},
   async mReject(id){var n=prompt("Причина отклонения:","");if(n==null)return;await gPatch("masters",id,{status:"rejected",note:n});toast("Отклонено")},
@@ -1466,6 +1469,7 @@ document.addEventListener("submit",function(e){
 
 /* ===== МАРШРУТИЗАЦИЯ СВОИХ СТРАНИЦ ===== */
 var cur="",busy=0;
+var busyAt=0;
 async function render(force){
   var main=$("main.page"),p=path(),v=$("#qm-view");
   if(!main)return;
@@ -1475,10 +1479,11 @@ async function render(force){
   if(!v){v=document.createElement("div");v.id="qm-view";v.className="container";main.appendChild(v)}
   Array.prototype.forEach.call(main.children,function(c){if(c!==v&&c.style.display!=="none")c.style.display="none"});
   if(!force&&cur===key)return;
-  if(busy)return;busy=1;
+  if(busy&&Date.now()-busyAt>20000)busy=0;
+  if(busy)return;busy=1;busyAt=Date.now();
   if(cur!==key)v.innerHTML='<p class="qm-muted">Загрузка…</p>';
   cur=key;
-  try{var h=await VIEWS[p]();if(path()===p)v.innerHTML=h;fillMasterPhones(v)}catch(e){v.innerHTML='<div class="qm-card">'+esc(errText(e))+'</div>'}
+  try{var h=await Promise.race([VIEWS[p](),new Promise(function(_,rj){setTimeout(function(){rj(new Error("Долгая загрузка. Проверьте интернет и обновите страницу."))},20000)})]);if(path()===p)v.innerHTML=h;fillMasterPhones(v)}catch(e){v.innerHTML='<div class="qm-card">'+esc(errText(e))+'</div>'}
   busy=0;
 }
 async function fillMasterPhones(v){
@@ -1521,7 +1526,40 @@ async function injectRatings(){
     if(tag){var s=document.createElement("span");s.className="qm-rate";s.innerHTML=tag;body.appendChild(s)}
   });
 }
+/* ===== ОПОВЕЩЕНИЯ ЭЛЕКТРИКУ О НОВЫХ ЗАЯВКАХ + СТРАХОВКА ОТОБРАЖЕНИЯ ===== */
+var NEWC=0,lastCheck=0,lastNotified=0;
+function applyBadge(){
+  var n=NEWC,pl=path();
+  var pb=document.querySelector('nav a[href="#/profile"]');
+  if(pb){var d=pb.querySelector(".qm-dot");if(n>0){if(!d){d=document.createElement("span");d.className="qm-dot";pb.style.position="relative";pb.appendChild(d)}if(d.textContent!==String(n))d.textContent=n}else if(d)d.remove()}
+  var b=document.getElementById("qm-nb");
+  if(n>0&&pl!=="/master"){if(!b){b=document.createElement("a");b.id="qm-nb";b.href="#/master?t=new";document.body.appendChild(b)}var tx="🔔 Новых заявок: "+n+" — открыть";if(b.textContent!==tx)b.textContent=tx}
+  else if(b)b.remove();
+  var t=document.title.replace(/^\(\d+\)\s*/,"");document.title=n>0?"("+n+") "+t:t;
+}
+async function checkNew(force){
+  var u=me();if(!u){NEWC=0;applyBadge();return}
+  if(!force&&Date.now()-lastCheck<20000)return;lastCheck=Date.now();
+  try{var m=await myMaster();if(!m||m.status!=="approved"){NEWC=0;applyBadge();return}
+    var list=await openFor(m),seen=Number(localStorage.getItem("qm:seen:"+u.uid)||0);
+    var fresh=list.filter(function(o){return(o.createdAt||0)>seen});
+    NEWC=fresh.length;applyBadge();
+    if(NEWC>0&&"Notification" in window&&Notification.permission==="granted"){var top=fresh[0].createdAt||0;if(top>lastNotified){lastNotified=top;try{new Notification("Новая заявка на QALA PVL",{body:fresh[0].title+" · "+money(fresh[0].price)})}catch(e){}}}
+  }catch(e){console.warn("checkNew",e)}
+}
+setInterval(function(){if(!document.hidden)checkNew(false)},30000);
+document.addEventListener("visibilitychange",function(){if(!document.hidden)checkNew(true)});
+window.addEventListener("hashchange",function(){setTimeout(function(){checkNew(false);applyBadge()},300)});
+setTimeout(function(){checkNew(true)},2500);
+setInterval(function(){
+  try{var p=path();if(!VIEWS[p])return;var main=$("main.page");if(!main)return;var v=$("#qm-view");
+    var vis=Array.prototype.some.call(main.children,function(c){return c!==v&&c.style.display!=="none"});
+    if(!v||vis||(!busy&&!v.innerHTML)){cur="";render(true).catch(function(){})}
+  }catch(e){}
+},900);
+
 function injectNav(){
+  applyBadge();
   var p=path(),main=$("main.page");if(!main)return;
   if(p==="/"&&!main.querySelector("[data-qmh]")){var hero=main.querySelector(".hero");if(hero){var d=document.createElement("a");d.href="#/masters";d.className="qm-promo";d.dataset.qmh=1;d.addEventListener("click",function(){setTimeout(function(){busy=0;sched()},0);setTimeout(diag,1500)});d.innerHTML="<b>Нужен электрик?</b><div class=\"small\">Оставьте заявку с фото и назовите цену. Электрикам: войдите и берите заказы.</div>";hero.parentNode.insertBefore(d,hero.nextSibling)}}
   var ta=$(".top-actions");
