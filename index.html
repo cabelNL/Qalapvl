@@ -1723,6 +1723,24 @@ async function fillMasterPhones(v){
 
 /* ===== ВСТАВКИ В ГОТОВЫЕ СТРАНИЦЫ ===== */
 var drawing=0;
+var REVN={},REVTAB=0,REVORG="";
+function revTabSync(){
+  var m=/^\/businesses\/([^\/]+)$/.exec(path()),tabs=document.querySelector("main.page .tabs"),box=document.getElementById("qm-rev");
+  if(!m||!tabs){return}
+  var id=decodeURIComponent(m[1]),rq=qs().get("tab")||"";if(REVORG!==id+"|"+rq){REVORG=id+"|"+rq;REVTAB=rq==="reviews"?1:0}
+  var n=REVN[id];if(n==null&&RAT&&RAT[id])n=RAT[id].n;if(n==null)n=0;
+  var t=tabs.querySelector("[data-qmrt]");
+  if(!t){t=document.createElement("button");t.type="button";t.className="tab";t.setAttribute("role","tab");t.setAttribute("data-qmrt","1");tabs.appendChild(t)}
+  var tx='Отзывы<span class="count">'+n+'</span>';if(t.innerHTML!==tx)t.innerHTML=tx;
+  var panel=tabs.nextElementSibling;if(panel&&panel.id==="qm-rev")panel=null;
+  var on=!!REVTAB;
+  t.classList.toggle("active",on);t.setAttribute("aria-selected",on?"true":"false");
+  if(on)Array.prototype.forEach.call(tabs.querySelectorAll(".tab"),function(b){if(b!==t){b.classList.remove("active");b.setAttribute("aria-selected","false")}});
+  if(panel)panel.style.display=on?"none":"";
+  if(box)box.style.display=on?"":"none"}
+document.addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("main.page .tabs .tab");if(!b)return;
+  if(b.hasAttribute("data-qmrt")){REVTAB=1;revTabSync();var bx=document.getElementById("qm-rev");if(bx)bx.scrollIntoView({block:"nearest"});return}
+  if(REVTAB){REVTAB=0;var tabs=b.parentElement;Array.prototype.forEach.call(tabs.querySelectorAll(".tab"),function(x){x.classList.toggle("active",x===b);x.setAttribute("aria-selected",x===b?"true":"false")});setTimeout(revTabSync,30)}},true);
 async function drawReviews(force){
   if(drawing)return;var m=/^\/businesses\/([^\/]+)$/.exec(path());if(!m)return;var id=decodeURIComponent(m[1]);
   var host=$("main.page .container .stack")||$("main.page .stack");if(!host)return;
@@ -1744,7 +1762,7 @@ async function drawReviews(force){
     h+='<form data-form="review" data-org="'+esc(id)+'" style="margin-top:10px"><div class="qm-f">Ваша оценка<div class="qm-row">'+[5,4,3,2,1].map(function(i){return '<label class="qm-chk"><input type="radio" name="rating" value="'+i+'"'+(mineR&&mineR.rating===i?" checked":"")+'> '+i+' ★</label>'}).join("")+'</div></div>'+
       '<label class="qm-f">Отзыв<textarea name="text" maxlength="1000">'+esc(mineR&&mineR.text||"")+'</textarea></label><div class="qm-f">Фото (до 3, необязательно)<input type="file" name="photos" accept="image/*" multiple><div class="qm-ph" data-prev>'+((mineR&&mineR.photos||[]).map(function(u){return '<img src="'+esc(u)+'" alt="">'}).join(""))+'</div></div><button class="btn btn-primary btn-sm" type="submit">'+(mineR?"Изменить отзыв":"Отправить отзыв")+'</button><span class="qm-muted"> Отзыв публикуется после проверки.</span></form>';
   }
-  box.innerHTML=h;drawing=0;
+  box.innerHTML=h;REVN[id]=n;drawing=0;revTabSync();
 }
 async function injectRatings(){
   var links=document.querySelectorAll('a.item-link[href^="#/businesses/"]');
@@ -2003,7 +2021,7 @@ document.addEventListener("click",function(e){var t=e.target.closest&&e.target.c
   setTimeout(function(){busy=0;cur="";sched()},400)},true);
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&path()==="/cart"){busy=0;cur="";sched()}});
 document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("[data-cartsend]");if(a&&noSize(cartGroups()[a.getAttribute("data-cartsend")]||[])){e.preventDefault();e.stopPropagation();toast("Выберите размер у товаров",1);return}if(a){var id=a.getAttribute("data-cartsend");SENT[id]=sig(cartGroups()[id]||[]);sentSave();setTimeout(function(){a.textContent="✓ Отправлено · отправить снова"},200)}});
-function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 07.11 20:28";f.appendChild(d)}
+function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 07.11 21:40";f.appendChild(d)}
 function enhCartIcon(){enhStamp();var ta=document.querySelector(".top-actions");if(!ta)return;var b=ta.querySelector("[data-qmcart]");if(!b){b=document.createElement("a");b.dataset.qmcart=1;b.className="icon-btn";b.href="#/cart";b.title="Корзина";b.setAttribute("aria-label","Корзина");b.style.fontSize="20px";b.textContent="🛒";b.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();location.hash="#/cart";busy=0;cur="";sched()});var q=ta.querySelector("[data-qmtq]");if(q)ta.insertBefore(b,q);else ta.appendChild(b)}updCartBadge()}
 
 /* ===== ФОТО: автообработка с выбором варианта ===== */
@@ -2067,7 +2085,7 @@ function diag(){
 }
 var raf=0;
 function sync(){raf=0;try{ensureManager();render(false).catch(function(e){console.warn(e);showErr(e)})}catch(e){console.warn(e);showErr(e)}
-  [injectNav,function(){drawReviews(false)},injectRatings,enhLogin,enhHours,enhAdminPhoto,enhPartnerNav,enhCart,enhCartIcon].forEach(function(fn){try{var r=fn();if(r&&r.catch)r.catch(function(e){console.warn(e)})}catch(e){console.warn(e)}})}
+  [injectNav,function(){drawReviews(false)},injectRatings,enhLogin,enhHours,enhAdminPhoto,revTabSync,enhPartnerNav,enhCart,enhCartIcon].forEach(function(fn){try{var r=fn();if(r&&r.catch)r.catch(function(e){console.warn(e)})}catch(e){console.warn(e)}})}
 function showErr(e){var m=$("main.page");if(!m||!VIEWS[path()])return;var v=$("#qm-view");if(!v){v=document.createElement("div");v.id="qm-view";v.className="container";m.appendChild(v)}v.innerHTML='<div class="qm-card">Не удалось открыть раздел: '+esc(errText(e))+'</div>'}
 function sched(){if(!raf)raf=requestAnimationFrame(sync)}
 window.addEventListener("hashchange",function(){busy=0;sched()});
