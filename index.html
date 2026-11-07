@@ -890,7 +890,7 @@ function mode(){
   return FB;
 }
 var CACHE={};
-function LK(n){return n==="organizations"?"qala:db:organizations":"qm:"+n}
+function LK(n){return (n==="organizations"||n==="products")?"qala:db:"+n:"qm:"+n}
 function LS(n){try{return JSON.parse(localStorage.getItem(LK(n))||"[]")}catch(e){return[]}}
 function LSw(n,v){try{localStorage.setItem(LK(n),JSON.stringify(v))}catch(e){throw new Error("Не удалось сохранить в памяти браузера (место закончилось или запись запрещена). Уберите фото у товаров или откройте сайт в обычном (не приватном) режиме.")}}
 function lsUsers(){try{return JSON.parse(localStorage.getItem("qala:db:users")||"[]")}catch(e){return[]}}
@@ -1110,11 +1110,15 @@ VIEWS["/master"]=async function(){
 
 VIEWS["/admin/masters"]=async function(){
   var u=me();if(!u||!u.admin)return head("Электрики, комиссии и отзывы","/admin")+'<div class="qm-card">Раздел только для администратора.</div>';
-  var tab=qs().get("t")||"masters",h=head("Электрики, комиссии и отзывы","/admin")+'<div class="qm-tabs"><a class="'+(tab==="masters"?"on":"")+'" href="#/admin/masters?t=masters">Электрики</a><a class="'+(tab==="fees"?"on":"")+'" href="#/admin/masters?t=fees">Комиссии</a><a class="'+(tab==="reviews"?"on":"")+'" href="#/admin/masters?t=reviews">Отзывы</a><a class="'+(tab==="taken"?"on":"")+'" href="#/admin/masters?t=taken">В работе</a></div>';
+  var tab=qs().get("t")||"masters",h=head("Электрики, комиссии и отзывы","/admin")+'<div class="qm-tabs"><a class="'+(tab==="masters"?"on":"")+'" href="#/admin/masters?t=masters">Электрики</a><a class="'+(tab==="fees"?"on":"")+'" href="#/admin/masters?t=fees">Комиссии</a><a class="'+(tab==="reviews"?"on":"")+'" href="#/admin/masters?t=reviews">Отзывы</a><a class="'+(tab==="taken"?"on":"")+'" href="#/admin/masters?t=taken">В работе</a><a class="'+(tab==="partners"?"on":"")+'" href="#/admin/masters?t=partners">Партнёры'+(PNA?' ('+PNA+')':'')+'</a></div>';
   if(tab==="masters"){
     var ms=(await gQuery("masters",[])).sort(function(a,b){return (a.status==="pending"?0:1)-(b.status==="pending"?0:1)});
     h+=ms.length?'<div style="display:grid;gap:10px">'+ms.map(function(m){return '<div class="qm-card"><div class="qm-row qm-between"><b>'+esc(m.name)+'</b>'+stBadge(m.status)+'</div><div class="qm-muted">'+esc((m.specs||[]).join(", "))+' · '+esc(m.phone||"")+' · '+esc(m.district||"")+'</div>'+(m.skills?'<div>Навыки: '+esc(m.skills)+'</div>':'')+(m.about?'<div>'+esc(m.about)+'</div>':'')+
       '<div class="qm-row" style="margin-top:8px">'+(m.status!=="approved"?'<button class="btn btn-primary btn-sm" data-act="mApprove" data-id="'+m.id+'">Одобрить</button>':'')+(m.status!=="rejected"?'<button class="btn btn-secondary btn-sm" data-act="mReject" data-id="'+m.id+'">Отклонить</button>':'')+'</div></div>'}).join("")+'</div>':'<div class="qm-card qm-muted">Мастеров пока нет.</div>';
+  }else if(tab==="partners"){
+    var pl=(await gQuery("partners",[])).sort(function(a,b){return (a.status==="review"?0:1)-(b.status==="review"?0:1)||(b.updatedAt||0)-(a.updatedAt||0)});
+    h+='<div class="qm-muted" style="margin-bottom:8px">Партнёры принимают баллы друг друга. Одобряйте только после согласия обеих сторон (кнопка появляется, когда партнёр принял заявку).</div>';
+    h+=pl.length?'<div style="display:grid;gap:10px">'+pl.map(function(p){return '<div class="qm-card"><div class="qm-row qm-between"><b>'+esc(p.fromName)+' ⇄ '+esc(p.toName)+'</b><span class="qm-st '+(p.status==="approved"?"ok":p.status==="review"||p.status==="invited"?"warn":"bad")+'">'+esc(PSTL[p.status]||p.status)+'</span></div><div class="qm-muted">'+dt(p.updatedAt||p.createdAt)+'</div><div class="qm-row" style="margin-top:8px">'+(p.status==="review"?'<button class="btn btn-primary btn-sm" data-act="pApprove" data-id="'+esc(p.id)+'">Одобрить</button><button class="btn btn-secondary btn-sm" data-act="pReject" data-id="'+esc(p.id)+'">Отклонить</button>':'')+(p.status==="approved"?'<button class="btn btn-secondary btn-sm" data-act="pEnd" data-id="'+esc(p.id)+'">Расторгнуть</button>':'')+'</div></div>'}).join("")+'</div>':'<div class="qm-card qm-muted">Заявок пока нет.</div>';
   }else if(tab==="taken"){
     var ts=(await gQuery("orders",[["status","==","taken"]])).sort(function(a,b){return (b.updatedAt||0)-(a.updatedAt||0)});
     h+='<div class="qm-muted" style="margin-bottom:8px">Заказы в работе. Если клиент не может показать QR (потерял телефон, спор) — завершите заказ вручную. Действие записывается в заказ.</div>';
@@ -1546,6 +1550,7 @@ VIEWS["/points"]=async function(){
   if(!keys.length)h+='<p class="qm-muted">Пока нет баллов. Поделитесь организацией и получите баллы после первой покупки клиента.</p>';
   else{h+='<div style="margin-top:6px">';for(var ki=0;ki<keys.length;ki++){var k=keys[ki],RR=await getRules(k);h+='<div class="qm-rev"><div class="qm-row qm-between"><a href="#/businesses/'+esc(k)+'">'+esc(by[k].name)+'</a><b>'+pts(by[k].left)+'</b></div><div class="qm-muted">'+esc(rulesText(RR))+'</div></div>'}h+='</div><p class="qm-muted">Чтобы потратить баллы, назовите организации свой код <b>'+esc(code)+'</b>.</p>'}
   h+='</div>';
+  try{var apr=await gQuery("partners",[["status","==","approved"]]),pl2=[];keys.forEach(function(k){var nm=[];apr.forEach(function(p){if(p.fromOrgId===k)nm.push(p.toName);else if(p.toOrgId===k)nm.push(p.fromName)});if(nm.length)pl2.push('<div class="qm-rev">Баллы «'+esc(by[k].name)+'» можно тратить также: <b>'+nm.map(esc).join(", ")+'</b></div>')});if(pl2.length)h+='<div class="qm-card" style="margin-top:10px"><b>Партнёры: где ещё можно тратить</b>'+pl2.join("")+'</div>'}catch(e){}
   if(mg.length)h+='<div class="qm-card" style="margin-top:10px"><b>Вы менеджер организаций: '+mg.length+'</b><p class="qm-muted">Организации, которые пришли по вашей ссылке, могут начислять вам баллы за привлечение.</p></div>';
   if(cr.length){h+='<div class="qm-card" style="margin-top:10px"><b>История</b>';cr.slice(0,30).forEach(function(c){h+='<div class="qm-rev"><div class="qm-row qm-between"><span>'+esc(c.orgName||"")+(c.kind==="manager"?' <span class="qm-st">менеджер</span>':'')+(c.status==="void"?' <span class="qm-st bad">отменено</span>':'')+'</span><b>+'+pts(c.points)+'</b></div><div class="qm-muted">'+dt(c.createdAt)+(c.saleSum?" · покупка "+money(c.saleSum):"")+(c.spent?" · потрачено "+pts(c.spent):"")+(c.note?" · "+esc(c.note):"")+'</div></div>'});h+='</div>'}
   return h;
@@ -1601,6 +1606,11 @@ var PF={
 var RDEF={discountPct:0,earnPct:3,maxSpendPct:20,minPurchase:0,expiryDays:0,active:true};
 async function getRules(orgId){var r=null;try{r=await gGet("loyaltyRules",orgId)}catch(e){}return Object.assign({},RDEF,r||{})}
 function rulesText(R){var a=[];if(R.discountPct>0)a.push("скидка "+R.discountPct+"%");if(R.earnPct>0)a.push("начисление "+R.earnPct+"%");if(R.maxSpendPct>0)a.push("списание до "+R.maxSpendPct+"%");if(R.minPurchase>0)a.push("от "+money(R.minPurchase));if(R.expiryDays>0)a.push("баллы "+R.expiryDays+" дн.");return a.join(" · ")||"условия не заданы"}
+async function clientCredits(org,u,uid){
+  var own=(await gQuery("credits",[["ownerId","==",u.uid],["userId","==",uid]])).filter(function(c){return c.orgId===org.id});
+  var ps=[];try{ps=await partnerOrgs(org,u)}catch(e){}var ext=[];
+  for(var i=0;i<ps.length;i++){try{var r=await gQuery("credits",[["orgId","==",ps[i].id],["userId","==",uid]]);var nm=ps[i].name;r.forEach(function(c){c.__p=nm;ext.push(c)})}catch(e){}}
+  return own.concat(ext)}
 function calcSale(S,R,bal,sp){
   var r={sum:S,disc:0,spend:0,maxSpend:0,pay:S,earn:0,note:""};
   if(S<(R.minPurchase||0)){r.note="Сумма меньше минимальной ("+money(R.minPurchase)+"): скидка и баллы не применяются";return r}
@@ -1637,7 +1647,7 @@ VIEWS["/points/cash"]=async function(){
   var u=me();if(!u)return head("Касса QALA","/profile")+needLogin();
   var P=await pickOrg(u);if(!P.org)return head("Касса QALA","/profile")+'<div class="qm-card"><p>Касса доступна владельцам организаций.</p><a class="btn btn-primary" href="#/business/register">Регистрация бизнеса</a></div>';
   var org=P.org,R=await getRules(org.id),pre=up(qs().get("code")).slice(0,8),bal=0,info="",ref=null;
-  if(pre){ref=await gGet("refCodes",pre);if(ref){var cs=(await gQuery("credits",[["ownerId","==",u.uid],["userId","==",ref.uid]])).filter(function(c){return c.orgId===org.id});bal=cs.reduce(function(s,c){return s+left(c)},0);info='<b>'+esc(ref.name||"Клиент")+'</b> · код '+esc(pre)+'<br>Баллов у клиента: <b>'+pts(bal)+'</b>'}else info='<span style="color:#b42318">Код '+esc(pre)+' не найден</span>'}
+  if(pre){ref=await gGet("refCodes",pre);if(ref){var cs=await clientCredits(org,u,ref.uid);bal=cs.reduce(function(s,c){return s+left(c)},0);var pb=cs.filter(function(c){return c.__p}).reduce(function(s,c){return s+left(c)},0);info='<b>'+esc(ref.name||"Клиент")+'</b> · код '+esc(pre)+'<br>Баллов у клиента: <b>'+pts(bal)+'</b>'+(pb?' <span class="qm-muted">(в т.ч. баллы партнёров: '+pts(pb)+')</span>':'')}else info='<span style="color:#b42318">Код '+esc(pre)+' не найден</span>'}
   var h=head("Касса QALA","/profile")+orgTabs(P.orgs,org,"cash")+orgNav(org,"cash");
   if(!R.active)h+='<div class="qm-card" style="border-color:#f2a516">Программа отключена. Включите её во вкладке «Программа».</div>';
   h+='<div class="qm-card" style="margin-top:10px"><div class="qm-muted">'+esc(rulesText(R))+'</div><button class="btn btn-primary" data-act="scan" type="button" style="margin-top:8px">📷 Сканировать QR клиента</button></div>';
@@ -1654,7 +1664,7 @@ ACT.txVoid=async function(id){
   var u=me(),t=await gGet("ltx",id);if(!t||t.status==="void")return;if(t.ownerId!==u.uid&&!u.admin)throw new Error("Нет прав");
   var ops=[];
   if(t.earnId){var e=await gGet("credits",t.earnId);if(e&&(e.spent||0)>0)throw new Error("Начисленные баллы уже потрачены, отмена невозможна");if(e)ops.push({t:"patch",n:"credits",id:t.earnId,p:{status:"void"}})}
-  var parts=t.parts||[];for(var i=0;i<parts.length;i++){var c=await gGet("credits",parts[i].id);if(c)ops.push({t:"patch",n:"credits",id:c.id,p:{spent:Math.max(0,(c.spent||0)-parts[i].amt),spentAt:Date.now()}})}
+  var parts=t.parts||[];for(var i=0;i<parts.length;i++){var c=await gGet("credits",parts[i].id);if(c)ops.push({t:"patch",n:"credits",id:c.id,p:c.orgId!==t.orgId?{spent:Math.max(0,(c.spent||0)-parts[i].amt),spentAt:Date.now(),spentOrg:t.orgId}:{spent:Math.max(0,(c.spent||0)-parts[i].amt),spentAt:Date.now()}})}
   if(!confirm("Отменить операцию на "+money(t.sum)+"? Списанные баллы вернутся клиенту, начисленные аннулируются."))return;
   ops.push({t:"patch",n:"ltx",id:id,p:{status:"void",voidedAt:Date.now(),voidedBy:u.uid}});ops.push(audit(t.orgId,u,"void",id));
   await commit(ops);toast("Операция отменена");
@@ -1668,11 +1678,11 @@ PF.sale=async function(fd,f,u){
   if(await gGet("ltx",op))throw new Error("Эта операция уже проведена");
   var R=await getRules(o.id);if(!R.active)throw new Error("Программа отключена в настройках");
   var S=Math.round(Number(fd.get("sum")));if(!(S>0))throw new Error("Укажите сумму");
-  var cs=(await gQuery("credits",[["ownerId","==",u.uid],["userId","==",ref.uid]])).filter(function(c){return c.orgId===o.id&&left(c)>0}).sort(function(a,b){return a.createdAt-b.createdAt}),bal=cs.reduce(function(s,c){return s+left(c)},0);
+  var cs=(await clientCredits(o,u,ref.uid)).filter(function(c){return left(c)>0}).sort(function(a,b){return (a.__p?1:0)-(b.__p?1:0)||a.createdAt-b.createdAt}),bal=cs.reduce(function(s,c){return s+left(c)},0);
   var want=Math.round(Number(fd.get("spend")||0));if(want>bal)throw new Error("У клиента только "+pts(bal));
   var c=calcSale(S,R,bal,want);if(want>c.spend&&want>0)throw new Error("Можно списать не больше "+pts(c.maxSpend));
   if(!confirm("Провести: к оплате "+money(c.pay)+(c.spend?", списать "+pts(c.spend):"")+(c.earn?", начислить "+pts(c.earn):"")+"?"))return "";
-  var ops=[],parts=[],r=c.spend;for(var i=0;i<cs.length&&r>0;i++){var t=Math.min(r,left(cs[i]));ops.push({t:"patch",n:"credits",id:cs[i].id,p:{spent:(cs[i].spent||0)+t,spentAt:Date.now()}});parts.push({id:cs[i].id,amt:t});r-=t}
+  var ops=[],parts=[],r=c.spend;for(var i=0;i<cs.length&&r>0;i++){var t=Math.min(r,left(cs[i]));ops.push({t:"patch",n:"credits",id:cs[i].id,p:cs[i].__p?{spent:(cs[i].spent||0)+t,spentAt:Date.now(),spentOrg:o.id}:{spent:(cs[i].spent||0)+t,spentAt:Date.now()}});parts.push({id:cs[i].id,amt:t,org:cs[i].orgId});r-=t}
   var earnId="";if(c.earn>0){earnId=op+"e";ops.push({t:"set",n:"credits",id:earnId,data:{orgId:o.id,orgName:o.name,ownerId:u.uid,userId:ref.uid,userName:ref.name,code:up(fd.get("code")),kind:"client",saleSum:S,pct:R.earnPct,points:c.earn,note:"покупка",spent:0,status:"active",createdAt:Date.now(),expiresAt:R.expiryDays>0?Date.now()+R.expiryDays*864e5:0}})}
   ops.push({t:"set",n:"ltx",id:op,data:{orgId:o.id,ownerId:u.uid,cashierId:u.uid,cashierName:u.name,userId:ref.uid,userName:ref.name,code:up(fd.get("code")),sum:S,disc:c.disc,spend:c.spend,pay:c.pay,earn:c.earn,earnId:earnId,parts:parts,status:"ok",createdAt:Date.now()}});
   ops.push(audit(o.id,u,"sale",op,{sum:S}));
@@ -1859,6 +1869,119 @@ function enhAdminPhoto(){
   b.addEventListener("click",function(){gGet("organizations",id).then(function(o){window.__photoEdit(o||{id:id},function(z){return gPatch("organizations",id,z).then(function(){toast("Фото сохранены");setTimeout(function(){location.reload()},400)})})})});
   box.insertAdjacentElement("beforebegin",b)}
 
+/* ===== ПАРТНЁРЫ ===== */
+var PSTL={invited:"Ждёт ответа партнёра",review:"На рассмотрении администратора",approved:"Партнёры",declined:"Партнёр отказался",rejected:"Администратор отклонил",ended:"Сотрудничество завершено"};
+async function myPartnerDocs(u){var a=[],b=[];try{a=await gQuery("partners",[["fromOwner","==",u.uid]])}catch(e){}try{b=await gQuery("partners",[["toOwner","==",u.uid]])}catch(e){}var seen={};return a.concat(b).filter(function(p){if(seen[p.id])return false;seen[p.id]=1;return true})}
+async function partnerOrgs(org,u){var ps=await myPartnerDocs(u),out=[];ps.forEach(function(p){if(p.status!=="approved")return;if(p.fromOrgId===org.id)out.push({id:p.toOrgId,name:p.toName});else if(p.toOrgId===org.id)out.push({id:p.fromOrgId,name:p.fromName})});return out}
+VIEWS["/business/partners"]=async function(){
+  var u=me();if(!u)return head("Партнёры","/business")+needLogin();
+  var P=await pickOrg(u);if(!P.org)return head("Партнёры","/business")+'<div class="qm-card"><p>Раздел для владельцев организаций.</p><a class="btn btn-primary" href="#/business/organizations/new">Добавить организацию</a></div>';
+  var org=P.org,all=await myPartnerDocs(u),mine=all.filter(function(p){return p.fromOrgId===org.id||p.toOrgId===org.id});
+  var h=head("Партнёры","/business")+orgTabs(P.orgs,org,"partners");
+  h+='<div class="qm-card"><b>Как это работает</b><p class="qm-muted" style="margin:6px 0 0">Партнёры принимают баллы друг друга. Клиент, заработавший баллы в «'+esc(org.name)+'», сможет потратить их у партнёра, и наоборот. Заявку должен принять партнёр, затем её одобряет администратор QALA.</p></div>';
+  var inc=mine.filter(function(p){return p.toOrgId===org.id&&p.status==="invited"});
+  if(inc.length){h+='<div class="qm-card" style="margin-top:10px;border-color:#f2a516"><b>Новые заявки на сотрудничество</b>';inc.forEach(function(p){h+='<div class="qm-rev"><div class="qm-row qm-between"><span><b>'+esc(p.fromName)+'</b> хочет стать партнёром «'+esc(p.toName)+'»</span><span class="qm-muted">'+dt(p.createdAt)+'</span></div><div class="qm-row" style="margin-top:6px"><button class="btn btn-primary btn-sm" data-act="pAccept" data-id="'+esc(p.id)+'">Принять</button><button class="btn btn-secondary btn-sm" data-act="pDecline" data-id="'+esc(p.id)+'">Отказать</button></div></div>'});h+='</div>'}
+  var busy={};mine.forEach(function(p){if(p.status==="invited"||p.status==="review"||p.status==="approved"){busy[p.fromOrgId===org.id?p.toOrgId:p.fromOrgId]=1}});
+  var orgs=[];try{orgs=(await gQuery("organizations",[["status","==","approved"]])).filter(function(o){return o.id!==org.id&&!busy[o.id]}).sort(function(a,b){return String(a.name).localeCompare(String(b.name),"ru")})}catch(e){}
+  h+='<form data-pform="pInvite" class="qm-card" style="margin-top:10px"><input type="hidden" name="org" value="'+esc(org.id)+'"><b>Добавить партнёра</b><label class="qm-f" style="margin-top:8px">Организация<select name="to" required><option value="">— выберите —</option>'+orgs.map(function(o){return '<option value="'+esc(o.id)+'">'+esc(o.name)+'</option>'}).join("")+'</select></label><button class="btn btn-primary" type="submit">Отправить заявку</button><div class="qm-muted" style="margin-top:6px">Владелец организации получит оповещение.</div></form>';
+  var act=mine.filter(function(p){return p.status==="approved"});
+  h+='<div class="qm-card" style="margin-top:10px"><b>Партнёры ('+act.length+')</b>'+(act.length?'':'<p class="qm-muted">Пока нет. Баллы тратятся только там, где заработаны.</p>');
+  act.forEach(function(p){var other=p.fromOrgId===org.id?p.toName:p.fromName;h+='<div class="qm-rev qm-row qm-between"><span>🤝 '+esc(other)+'</span><button class="btn btn-ghost btn-sm" data-act="pEnd" data-id="'+esc(p.id)+'">Завершить</button></div>'});h+='</div>';
+  var pend=mine.filter(function(p){return p.status==="invited"&&p.fromOrgId===org.id||p.status==="review"});
+  if(pend.length){h+='<div class="qm-card" style="margin-top:10px"><b>Заявки в процессе</b>';pend.forEach(function(p){var other=p.fromOrgId===org.id?p.toName:p.fromName;h+='<div class="qm-rev"><div class="qm-row qm-between"><span>'+esc(other)+'</span><span class="qm-st warn">'+esc(PSTL[p.status])+'</span></div>'+(p.fromOrgId===org.id?'<button class="btn btn-ghost btn-sm" data-act="pEnd" data-id="'+esc(p.id)+'">Отозвать</button>':'')+'</div>'});h+='</div>'}
+  var old=mine.filter(function(p){return p.status==="declined"||p.status==="rejected"||p.status==="ended"});
+  if(old.length){h+='<div class="qm-card" style="margin-top:10px"><b>Архив</b>';old.forEach(function(p){var other=p.fromOrgId===org.id?p.toName:p.fromName;h+='<div class="qm-rev qm-row qm-between"><span>'+esc(other)+'</span><span class="qm-muted">'+esc(PSTL[p.status])+'</span></div>'});h+='</div>'}
+  return h;
+};
+PF.pInvite=async function(fd,f,u){
+  var o=await ownOrg(fd,u),toId=String(fd.get("to")||"");if(!toId)throw new Error("Выберите организацию");
+  var t=await gGet("organizations",toId);if(!t||!t.ownerId)throw new Error("Организация не найдена");if(t.id===o.id)throw new Error("Нельзя выбрать себя");
+  var id=o.id+"_"+t.id,rev=await gGet("partners",t.id+"_"+o.id),old=await gGet("partners",id);
+  if(rev&&["invited","review","approved"].indexOf(rev.status)>=0)throw new Error("Заявка с этой организацией уже есть");
+  if(old&&["invited","review","approved"].indexOf(old.status)>=0)throw new Error("Заявка уже отправлена");
+  if(old)await gPatch("partners",id,{status:"invited",updatedAt:Date.now(),createdAt:Date.now()});
+  else await gSet("partners",id,{fromOrgId:o.id,fromName:o.name,fromOwner:u.uid,toOrgId:t.id,toName:t.name,toOwner:t.ownerId,status:"invited",createdAt:Date.now(),updatedAt:Date.now()});
+  return "Заявка отправлена владельцу «"+t.name+"»"};
+ACT.pAccept=async function(id){await gPatch("partners",id,{status:"review",updatedAt:Date.now()});toast("Принято. Теперь заявку рассмотрит администратор")};
+ACT.pDecline=async function(id){if(!confirm("Отказать в сотрудничестве?"))return;await gPatch("partners",id,{status:"declined",updatedAt:Date.now()});toast("Отказано")};
+ACT.pEnd=async function(id){if(!confirm("Завершить или отозвать сотрудничество? Баллы перестанут приниматься друг у друга."))return;await gPatch("partners",id,{status:"ended",updatedAt:Date.now()});toast("Готово")};
+ACT.pApprove=async function(id){
+  var u=me();if(!u||!u.admin)throw new Error("Только администратор");var p=await gGet("partners",id);if(!p)return;
+  var ops=[{t:"patch",n:"partners",id:id,p:{status:"approved",approvedAt:Date.now(),updatedAt:Date.now()}}];
+  var pairs=[[p.fromOrgId,[p.fromOwner,p.toOwner]],[p.toOrgId,[p.fromOwner,p.toOwner]]];
+  for(var i=0;i<pairs.length;i++){var a=await gGet("partnerAcl",pairs[i][0]),ow=(a&&a.owners)||[];pairs[i][1].forEach(function(x){if(ow.indexOf(x)<0)ow.push(x)});ops.push({t:"set",n:"partnerAcl",id:pairs[i][0],data:{owners:ow,updatedAt:Date.now()}})}
+  await commit(ops);toast("Партнёрство одобрено")};
+ACT.pReject=async function(id){if(!confirm("Отклонить заявку?"))return;await gPatch("partners",id,{status:"rejected",updatedAt:Date.now()});toast("Отклонено")};
+/* оповещения о партнёрах */
+var PN=0,PNA=0;
+async function checkPartners(){
+  var u=me();if(!u){PN=0;PNA=0;applyPN();return}
+  try{var inc=await gQuery("partners",[["toOwner","==",u.uid]]);inc=inc.filter(function(p){return p.status==="invited"});PN=inc.length;
+    var seen=[];try{seen=JSON.parse(localStorage.getItem("qm:seenInv")||"[]")}catch(e){}
+    var fresh=inc.filter(function(p){return seen.indexOf(p.id+p.createdAt)<0});
+    if(fresh.length&&path()!=="/business/partners"){toast("🤝 Заявка на партнёрство от «"+fresh[0].fromName+"». Раздел бизнеса → Партнёры");try{localStorage.setItem("qm:seenInv",JSON.stringify(seen.concat(fresh.map(function(p){return p.id+p.createdAt})).slice(-50)))}catch(e){}}
+  }catch(e){PN=0}
+  if(u.admin){try{var rv=await gQuery("partners",[["status","==","review"]]);PNA=rv.length;var sa=[];try{sa=JSON.parse(localStorage.getItem("qm:seenRev")||"[]")}catch(e){}var fr=rv.filter(function(p){return sa.indexOf(p.id+p.updatedAt)<0});if(fr.length){toast("🤝 Партнёрств на одобрение: "+PNA+" (Админ → Электрики… → Партнёры)");try{localStorage.setItem("qm:seenRev",JSON.stringify(sa.concat(fr.map(function(p){return p.id+p.updatedAt})).slice(-50)))}catch(e){}}}catch(e){PNA=0}}
+  applyPN();
+}
+function applyPN(){var a=document.querySelector('.subnav a[data-qxp]');if(a){var d=a.querySelector(".qm-dot");if(PN>0){if(!d){d=document.createElement("span");d.className="qm-dot";a.style.position="relative";a.appendChild(d)}d.textContent=PN}else if(d)d.remove()}}
+setInterval(function(){if(!document.hidden)checkPartners()},45000);setTimeout(checkPartners,3500);window.addEventListener("hashchange",function(){setTimeout(checkPartners,600)});
+function enhPartnerNav(){var sn=document.querySelector(".subnav");if(!sn||path().indexOf("/business")!==0||sn.querySelector("[data-qxp]")){applyPN();return}if(!me())return;var a=document.createElement("a");a.href="#/business/partners";a.dataset.qxp=1;a.textContent="Партнёры";if(path()==="/business/partners")a.className="active";sn.appendChild(a);applyPN()}
+
+/* ===== КОРЗИНА ===== */
+var CMEM=null;
+function cartGet(){if(CMEM)return CMEM;try{CMEM=JSON.parse(localStorage.getItem("qm:cart")||"[]")}catch(e){CMEM=[]}return CMEM}
+function cartSave(a){CMEM=a;try{localStorage.setItem("qm:cart",JSON.stringify(a))}catch(e){}updCartBadge()}
+function cartCount(){return cartGet().reduce(function(s,i){return s+i.qty},0)}
+function updCartBadge(){var b=document.querySelector("[data-qmcart]");if(!b)return;var n=cartCount(),d=b.querySelector(".qm-dot");if(n>0){if(!d){d=document.createElement("span");d.className="qm-dot";b.style.position="relative";b.appendChild(d)}d.textContent=n}else if(d)d.remove()}
+async function cartAdd(pid){
+  var p=await gGet("products",pid);if(!p){toast("Товар не найден",1);return}
+  var a=cartGet().slice(),it=a.find(function(x){return x.id===pid});
+  if(it)it.qty=Math.min(99,it.qty+1);else a.push({id:pid,orgId:p.orgId||"",title:p.title||"Товар",price:Number(p.price)||0,unit:(window.__pu?window.__pu(p):"")||"",img:p.imageUrl||"",qty:1,t:Date.now()});
+  cartSave(a);toast("🛒 Добавлено в корзину ("+cartCount()+")")}
+document.addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("[data-qmc]");if(!b)return;e.preventDefault();e.stopPropagation();
+  var pid=b.getAttribute("data-qmc");b.disabled=true;cartAdd(pid).catch(function(err){toast(errText(err),1)}).then(function(){b.disabled=false;enhCart()})},true);
+function enhCart(){
+  var main=document.querySelector("main.page");if(!main||VIEWS[path()])return;
+  var inCart={};cartGet().forEach(function(i){inCart[i.id]=i.qty});
+  Array.prototype.forEach.call(main.querySelectorAll(".item"),function(it){var a=it.querySelector('a.item-link[href^="#/products/"]');if(!a)return;var pid=a.getAttribute("href").split("/")[2].split("?")[0];var b=it.querySelector("[data-qmc]");
+    if(!b){b=document.createElement("button");b.type="button";b.className="btn btn-secondary btn-sm";b.style.cssText="margin:0 10px 10px;align-self:flex-start";b.setAttribute("data-qmc",pid);it.appendChild(b)}
+    var tx=inCart[pid]?"🛒 В корзине: "+inCart[pid]:"🛒 В корзину";if(b.textContent!==tx)b.textContent=tx});
+  var m=/^\/products\/([^\/]+)$/.exec(path());
+  if(m){var h1=main.querySelector(".detail h1");if(h1){var pid2=decodeURIComponent(m[1]),b2=main.querySelector("[data-qmcd]");if(!b2){b2=document.createElement("button");b2.type="button";b2.className="btn btn-primary";b2.style.margin="8px 0";b2.setAttribute("data-qmc",pid2);b2.setAttribute("data-qmcd",1);h1.insertAdjacentElement("afterend",b2)}
+    var t2=inCart[pid2]?"🛒 В корзине: "+inCart[pid2]+" · добавить ещё":"🛒 В корзину";if(b2.textContent!==t2)b2.textContent=t2}}
+}
+var ORGC={},SENT={};
+async function orgInfo(id){if(ORGC[id])return ORGC[id];var o=null;try{o=await gGet("organizations",id)}catch(e){}ORGC[id]=o||{id:id,name:"Организация"};return ORGC[id]}
+function cartMsg(items,o){var u=me(),t=0,l=items.map(function(i,k){var s=i.price*i.qty;t+=s;return (k+1)+". "+i.title+" — "+i.qty+" × "+money(i.price)+" = "+money(s)}).join("\n");
+  var ref=storedRef();return "Здравствуйте! Заявка из QALA PVL ("+(o.name||"")+"):\n"+l+"\nИтого: "+money(t)+(u?"\nКлиент: "+u.name:"")+(ref?"\nКод друга: "+ref:"")}
+function waLink(o,items){var ph=String(o.whatsapp||o.phone||"").replace(/\D/g,"");if(!ph)return "";return "https://wa.me/"+ph+"?text="+encodeURIComponent(cartMsg(items,o))}
+VIEWS["/cart"]=async function(){
+  var a=cartGet(),h=head("Корзина","/");
+  if(!a.length)return h+'<div class="qm-card" style="text-align:center"><p>Корзина пуста</p><p class="qm-muted">Нажимайте «🛒 В корзину» на товарах разных продавцов. Потом отправите заявку всем сразу.</p><a class="btn btn-primary" href="#/products">К товарам</a></div>';
+  var g={};a.forEach(function(i){(g[i.orgId]=g[i.orgId]||[]).push(i)});var ids=Object.keys(g);
+  for(var k=0;k<ids.length;k++)await orgInfo(ids[k]);
+  var total=0,sendable=0;
+  ids.forEach(function(id){var o=ORGC[id],items=g[id],sub=items.reduce(function(s,i){return s+i.price*i.qty},0);total+=sub;var lk=waLink(o,items);if(lk)sendable++;
+    h+='<div class="qm-card" style="margin-top:10px"><div class="qm-row qm-between"><a href="#/businesses/'+esc(id)+'"><b>'+esc(o.name)+'</b></a><b>'+money(sub)+'</b></div>';
+    items.forEach(function(i){h+='<div class="qm-rev" style="display:flex;gap:10px;align-items:center">'+(i.img?'<img src="'+esc(i.img)+'" alt="" style="width:52px;height:52px;object-fit:cover;border-radius:10px">':'')+'<div style="flex:1;min-width:0"><a href="#/products/'+esc(i.id)+'">'+esc(i.title)+'</a><div class="qm-muted">'+money(i.price)+esc(i.unit)+'</div></div><div class="qm-row" style="gap:4px"><button class="btn btn-secondary btn-sm" data-act="cartDec" data-id="'+esc(i.id)+'">−</button><b style="min-width:22px;text-align:center">'+i.qty+'</b><button class="btn btn-secondary btn-sm" data-act="cartInc" data-id="'+esc(i.id)+'">+</button><button class="btn btn-ghost btn-sm" data-act="cartDel" data-id="'+esc(i.id)+'" aria-label="Удалить">✕</button></div></div>'});
+    h+=lk?'<a class="btn btn-primary" data-cartsend="'+esc(id)+'" target="_blank" rel="noopener" href="'+esc(lk)+'" style="margin-top:8px">'+(SENT[id]?"✓ Отправлено · отправить снова":"Отправить заявку в WhatsApp")+'</a>':'<div class="qm-muted" style="margin-top:8px">У организации не указан телефон'+(o.phone?"":"")+'. Свяжитесь через её страницу.</div>';
+    h+='</div>'});
+  h+='<div class="qm-card" style="margin-top:10px"><div class="qm-row qm-between" style="font-size:18px"><span>Всего ('+ids.length+' '+(ids.length===1?"продавец":"продавцов")+')</span><b>'+money(total)+'</b></div>'+(sendable>1?'<button class="btn btn-primary" data-act="cartAll" style="margin-top:8px;width:100%">Отправить всем одним нажатием</button>':'')+'<button class="btn btn-ghost btn-sm" data-act="cartClear" style="margin-top:6px">Очистить корзину</button></div>';
+  return h;
+};
+function cartMut(id,f){var a=cartGet().map(function(x){return Object.assign({},x)}),i=a.findIndex(function(x){return x.id===id});if(i<0)return;f(a,i);cartSave(a)}
+ACT.cartInc=function(id){cartMut(id,function(a,i){a[i].qty=Math.min(99,a[i].qty+1)})};
+ACT.cartDec=function(id){cartMut(id,function(a,i){if(a[i].qty>1)a[i].qty--;else a.splice(i,1)})};
+ACT.cartDel=function(id){cartMut(id,function(a,i){a.splice(i,1)})};
+ACT.cartClear=function(){if(!confirm("Очистить корзину?"))return;SENT={};cartSave([])};
+ACT.cartAll=function(){
+  var g={};cartGet().forEach(function(i){(g[i.orgId]=g[i.orgId]||[]).push(i)});var n=0,blocked=0,total=0;
+  Object.keys(g).forEach(function(id){var lk=waLink(ORGC[id]||{},g[id]);if(!lk)return;total++;var w=window.open(lk,"_blank");if(w){SENT[id]=1;n++}else blocked++});
+  if(blocked)toast("Браузер открыл "+n+" из "+total+". Остальным нажмите кнопку у продавца.",1);else toast("Заявки открыты в WhatsApp: "+n)};
+document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("[data-cartsend]");if(a){SENT[a.getAttribute("data-cartsend")]=1;setTimeout(function(){a.textContent="✓ Отправлено · отправить снова"},200)}});
+function enhCartIcon(){var ta=document.querySelector(".top-actions");if(!ta)return;var b=ta.querySelector("[data-qmcart]");if(!b){b=document.createElement("a");b.dataset.qmcart=1;b.className="icon-btn";b.href="#/cart";b.title="Корзина";b.setAttribute("aria-label","Корзина");b.style.fontSize="20px";b.textContent="🛒";b.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();location.hash="#/cart";busy=0;cur="";sched()});var q=ta.querySelector("[data-qmtq]");if(q)ta.insertBefore(b,q);else ta.appendChild(b)}updCartBadge()}
+
 var LASTERR="";
 window.addEventListener("error",function(e){LASTERR=String(e.message||e.error||"")+(e.filename?" @"+String(e.filename).split("/").pop()+":"+e.lineno:"")});
 window.addEventListener("unhandledrejection",function(e){LASTERR="promise: "+String(e.reason&&e.reason.message||e.reason)});
@@ -1871,7 +1994,7 @@ function diag(){
 }
 var raf=0;
 function sync(){raf=0;try{ensureManager();render(false).catch(function(e){console.warn(e);showErr(e)})}catch(e){console.warn(e);showErr(e)}
-  [injectNav,function(){drawReviews(false)},injectRatings,enhLogin,enhHours,enhAdminPhoto].forEach(function(fn){try{var r=fn();if(r&&r.catch)r.catch(function(e){console.warn(e)})}catch(e){console.warn(e)}})}
+  [injectNav,function(){drawReviews(false)},injectRatings,enhLogin,enhHours,enhAdminPhoto,enhPartnerNav,enhCart,enhCartIcon].forEach(function(fn){try{var r=fn();if(r&&r.catch)r.catch(function(e){console.warn(e)})}catch(e){console.warn(e)}})}
 function showErr(e){var m=$("main.page");if(!m||!VIEWS[path()])return;var v=$("#qm-view");if(!v){v=document.createElement("div");v.id="qm-view";v.className="container";m.appendChild(v)}v.innerHTML='<div class="qm-card">Не удалось открыть раздел: '+esc(errText(e))+'</div>'}
 function sched(){if(!raf)raf=requestAnimationFrame(sync)}
 window.addEventListener("hashchange",function(){busy=0;sched()});
