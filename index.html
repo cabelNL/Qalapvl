@@ -2,7 +2,7 @@
 <script>
 window.__photoEdit=function(item,save){
   var W=320,H=240,urls=(item.images&&item.images.length?item.images:(item.imageUrl?[item.imageUrl]:[])).slice(0,3);
-  if(!urls.length){alert("У товара нет фото");return}
+  if(!urls.length){alert("Фото пока нет. Добавьте фото через «Редактировать» организации");return}
   var P=urls.map(function(u){return{src:u,zoom:1,ox:0,oy:0,rot:0,gone:false,img:null}});
   var ov=document.createElement("div");
   ov.style.cssText="position:fixed;inset:0;z-index:9999;background:rgba(16,32,56,.6);display:flex;align-items:center;justify-content:center;padding:8px";
@@ -958,11 +958,25 @@ async function takeTx(id,uid,name){
   var o=await gGet("orders",id);if(!o||o.status!=="open")throw new Error("Заявку уже взял другой мастер");
   await gPatch("orders",id,{status:"taken",masterId:uid,masterName:name,takenAt:Date.now(),fee:Math.round(o.price*FEE_RATE),updatedAt:Date.now()});
 }
+var DALPH="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function newDoneCode(){var s="";for(var i=0;i<8;i++)s+=DALPH.charAt(Math.floor(Math.random()*DALPH.length));return s}
+function doneLink(id,code){var u=location.href.split("#")[0]+"#/master?t=mine&done="+id+"."+code;return new TextEncoder().encode(u).length<=106?u:"QALA-DONE:"+id+":"+code}
+function parseDone(s){s=String(s||"");var m=/done=([a-z0-9]+)\.([A-Z0-9]{8})/.exec(s)||/QALA-DONE:([a-z0-9]+):([A-Z0-9]{8})/.exec(s);return m?{id:m[1],code:m[2]}:null}
+async function completeOrder(id,code){
+  var u=me(),o=await gGet("orders",id);
+  if(!o||o.masterId!==u.uid)throw new Error("Это не ваш заказ");
+  if(o.status==="done")throw new Error("Заказ уже завершён");
+  if(o.status!=="taken")throw new Error("Заказ нельзя завершить в статусе «"+o.status+"»");
+  if(!mode()){var oc=await gGet("orderCodes",id);if(!oc||oc.code!==String(code).toUpperCase())throw new Error("Неверный код заказчика")}
+  try{await gPatch("orders",id,{status:"done",doneAt:Date.now(),doneCode:String(code).toUpperCase(),updatedAt:Date.now()})}
+  catch(e){if(e&&e.code==="permission-denied")throw new Error("Неверный код заказчика. Попросите клиента показать QR заново.");throw e}
+}
 async function createOrder(o,priv){
   var f=mode();
   if(f){var b=f.X.writeBatch(f.fs);b.set(f.X.doc(f.fs,"orders",o.id),(function(c){delete c.id;return c})(Object.assign({},o)));
-    b.set(f.X.doc(f.fs,"ordersPrivate",o.id),(function(c){delete c.id;return c})(Object.assign({},priv)));await b.commit();return}
-  await gSet("orders",o.id,o);await gSet("ordersPrivate",o.id,priv);
+    b.set(f.X.doc(f.fs,"ordersPrivate",o.id),(function(c){delete c.id;return c})(Object.assign({},priv)));
+    b.set(f.X.doc(f.fs,"orderCodes",o.id),{clientId:o.clientId,code:newDoneCode(),createdAt:Date.now()});await b.commit();return}
+  await gSet("orders",o.id,o);await gSet("ordersPrivate",o.id,priv);await gSet("orderCodes",o.id,{clientId:o.clientId,code:newDoneCode(),createdAt:Date.now()});
 }
 
 /* ===== РЕЙТИНГ ОРГАНИЗАЦИЙ ===== */
@@ -1037,13 +1051,14 @@ VIEWS["/orders/new"]=async function(){
 VIEWS["/orders"]=async function(){
   var u=me();if(!u)return head("Мои заявки","/masters")+needLogin();
   var list=(await gQuery("orders",[["clientId","==",u.uid]])).sort(function(a,b){return b.createdAt-a.createdAt});
+  var codes={};for(var ci=0;ci<list.length;ci++){if(list[ci].status==="taken"){try{var oc=await gGet("orderCodes",list[ci].id);if(!oc){oc={clientId:u.uid,code:newDoneCode(),createdAt:Date.now()};await gSet("orderCodes",list[ci].id,oc)}codes[list[ci].id]=oc.code}catch(e){}}}
   var h=head("Мои заявки","/masters")+'<a class="btn btn-primary btn-sm" href="#/orders/new">+ Новая заявка</a><div style="display:grid;gap:10px;margin-top:10px">';
   if(!list.length)h+='<div class="qm-card qm-muted">Заявок пока нет.</div>';
   list.forEach(function(o){
     h+='<div class="qm-card"><div class="qm-row qm-between"><b>'+esc(o.title)+'</b>'+stBadge(o.status)+'</div><div class="qm-muted">'+esc(o.spec)+' · '+dt(o.createdAt)+'</div>'+
     phs(o)+'<div class="qm-price" style="margin:6px 0">'+money(o.price)+'</div>';
     if(o.status==="open"){h+='<div class="qm-muted">'+(o.targetMasterId?'Ждём ответа выбранного мастера.':'Пока никто не взял.')+'</div><div class="qm-row" style="margin-top:8px"><button class="btn btn-secondary btn-sm" data-act="raise" data-id="'+o.id+'">Повысить цену</button><button class="btn btn-ghost btn-sm" data-act="cancel" data-id="'+o.id+'">Отменить</button></div>'}
-    if(o.status==="taken"){h+='<div>Взял мастер: <b>'+esc(o.masterName||"")+'</b></div><div id="mp-'+o.id+'" class="qm-muted" data-mphone="'+esc(o.masterId)+'"></div><div class="qm-row" style="margin-top:8px"><button class="btn btn-primary btn-sm" data-act="done" data-id="'+o.id+'">Работа выполнена</button><button class="btn btn-ghost btn-sm" data-act="cancelTaken" data-id="'+o.id+'">Отменить</button></div>'}
+    if(o.status==="taken"){h+='<div>Взял мастер: <b>'+esc(o.masterName||"")+'</b></div><div id="mp-'+o.id+'" class="qm-muted" data-mphone="'+esc(o.masterId)+'"></div><div style="text-align:center;margin:10px 0;padding:10px;border:1px dashed #6b4fc9;border-radius:12px">'+(codes[o.id]?'<b>QR завершения заказа</b><div style="margin:6px auto;width:200px;max-width:100%">'+qrSvg(doneLink(o.id,codes[o.id]),200)+'</div><div style="font:800 22px monospace;letter-spacing:3px">'+esc(codes[o.id])+'</div><div class="qm-muted">Когда работа выполнена, дайте мастеру считать этот QR (или назовите код). Пока он не считает QR, заказ не завершится. Не показывайте QR раньше времени.</div>':'<div class="qm-muted">Код заказа создаётся… обновите страницу.</div>')+'</div><div class="qm-row"><button class="btn btn-ghost btn-sm" data-act="cancelTaken" data-id="'+o.id+'">Отменить заказ</button></div>'}
     if(o.status==="done")h+='<div class="qm-muted">Мастер: '+esc(o.masterName||"")+' · выполнено '+dt(o.doneAt)+'</div>';
     h+='</div>';
   });
@@ -1057,8 +1072,11 @@ async function openFor(m){
   var hid=[];try{hid=JSON.parse(localStorage.getItem("qm:hidden")||"[]")}catch(e){}
   return r.filter(function(o){return o.clientId!==m.id&&hid.indexOf(o.id)<0&&(!o.targetMasterId||o.targetMasterId===m.id)&&((m.specs||[]).indexOf(o.spec)>=0||o.targetMasterId===m.id)}).sort(function(x,y){return y.createdAt-x.createdAt});
 }
+var DONEBUSY={};
 VIEWS["/master"]=async function(){
-  var u=me();if(!u)return head("Кабинет электрика","/masters")+'<div class="qm-card"><p>Войдите в аккаунт или зарегистрируйтесь, затем заполните анкету электрика: специальность и навыки.</p><div class="qm-row"><a class="btn btn-primary" href="#/login">Войти</a><a class="btn btn-secondary" href="#/register">Регистрация</a></div></div>';
+  var u=me();
+  var dp=parseDone("done="+(qs().get("done")||""));
+  if(u&&dp&&!DONEBUSY[dp.id]){DONEBUSY[dp.id]=1;try{await completeOrder(dp.id,dp.code);toast("Заказ завершён. Комиссия начислена")}catch(e){toast(errText(e),1)}history.replaceState(null,"","#/master?t=mine");}if(!u)return head("Кабинет электрика","/masters")+'<div class="qm-card"><p>Войдите в аккаунт или зарегистрируйтесь, затем заполните анкету электрика: специальность и навыки.</p><div class="qm-row"><a class="btn btn-primary" href="#/login">Войти</a><a class="btn btn-secondary" href="#/register">Регистрация</a></div></div>';
   var m=await myMaster();
   if(!m)return head("Кабинет электрика","/masters")+'<div class="qm-card"><p>Вы ещё не зарегистрированы как электрик.</p><a class="btn btn-primary" href="#/masters/new">Стать электриком</a></div>';
   var tab=qs().get("t")||"new",h=head("Кабинет электрика","/masters")+'<div class="qm-row">'+stBadge(m.status)+'<a href="#/masters/new">Изменить анкету</a>'+(("Notification" in window&&Notification.permission==="default")?'<button class="btn btn-secondary btn-sm" data-act="notif">🔔 Включить оповещения</button>':'')+'</div>';
@@ -1081,7 +1099,7 @@ VIEWS["/master"]=async function(){
      '<div class="qm-muted">'+esc(o.spec)+' · взят '+dt(o.takenAt)+'</div>'+(o.descr?'<div style="margin:6px 0">'+esc(o.descr)+'</div>':'')+phs(o)+'<div class="qm-price">'+money(o.price)+'</div>'+
      (o.status!=="cancelled"&&p.phone?'<div style="margin-top:6px">Клиент: <b>'+esc(o.clientName||"")+'</b> · <a href="tel:'+esc(p.phone)+'">'+esc(p.phone)+'</a> · <a target="_blank" rel="noopener" href="https://wa.me/'+esc(String(p.phone).replace(/\D/g,""))+'?text='+encodeURIComponent("Здравствуйте! Я мастер из QALA PVL, по вашей заявке «"+o.title+"».")+'">WhatsApp</a></div><div>Адрес: '+esc(p.address||"")+'</div>':'')+
      (o.status==="done"?'<div class="qm-muted" style="margin-top:4px">Комиссия '+money(feeOf(o))+' — '+(o.feePaid?"оплачена":"к оплате")+'</div>':'')+
-     (o.status==="taken"?'<div class="qm-muted" style="margin-top:4px">Когда закончите, клиент отметит «Выполнено» — тогда начислится комиссия '+money(feeOf(o))+'.</div>':'')+'</div>'}).join("")+'</div>';
+     (o.status==="taken"?'<div class="qm-muted" style="margin-top:4px">Закончили работу? Считайте QR заказчика: заказ завершится и начислится комиссия '+money(feeOf(o))+'.</div><div class="qm-row" style="margin-top:6px"><button class="btn btn-primary btn-sm" data-act="scanDone" data-id="'+o.id+'" type="button">📷 Считать QR заказчика</button></div><form data-pform="doneCode" class="qm-row" style="margin-top:6px"><input type="hidden" name="id" value="'+o.id+'"><input name="code" required maxlength="8" autocapitalize="characters" placeholder="или код заказчика" style="flex:1;min-width:0"><button class="btn btn-secondary btn-sm" type="submit">Завершить</button></form>':'')+'</div>'}).join("")+'</div>';
   }else{
     h+='<div class="qm-card"><div class="qm-muted">К оплате</div><div class="qm-price">'+money(debt)+'</div><div class="qm-muted" style="margin-top:6px">'+esc(PAY_TEXT)+'</div></div>';
     var done=mine.filter(function(o){return o.status==="done"});
@@ -1092,11 +1110,15 @@ VIEWS["/master"]=async function(){
 
 VIEWS["/admin/masters"]=async function(){
   var u=me();if(!u||!u.admin)return head("Электрики, комиссии и отзывы","/admin")+'<div class="qm-card">Раздел только для администратора.</div>';
-  var tab=qs().get("t")||"masters",h=head("Электрики, комиссии и отзывы","/admin")+'<div class="qm-tabs"><a class="'+(tab==="masters"?"on":"")+'" href="#/admin/masters?t=masters">Электрики</a><a class="'+(tab==="fees"?"on":"")+'" href="#/admin/masters?t=fees">Комиссии</a><a class="'+(tab==="reviews"?"on":"")+'" href="#/admin/masters?t=reviews">Отзывы</a></div>';
+  var tab=qs().get("t")||"masters",h=head("Электрики, комиссии и отзывы","/admin")+'<div class="qm-tabs"><a class="'+(tab==="masters"?"on":"")+'" href="#/admin/masters?t=masters">Электрики</a><a class="'+(tab==="fees"?"on":"")+'" href="#/admin/masters?t=fees">Комиссии</a><a class="'+(tab==="reviews"?"on":"")+'" href="#/admin/masters?t=reviews">Отзывы</a><a class="'+(tab==="taken"?"on":"")+'" href="#/admin/masters?t=taken">В работе</a></div>';
   if(tab==="masters"){
     var ms=(await gQuery("masters",[])).sort(function(a,b){return (a.status==="pending"?0:1)-(b.status==="pending"?0:1)});
     h+=ms.length?'<div style="display:grid;gap:10px">'+ms.map(function(m){return '<div class="qm-card"><div class="qm-row qm-between"><b>'+esc(m.name)+'</b>'+stBadge(m.status)+'</div><div class="qm-muted">'+esc((m.specs||[]).join(", "))+' · '+esc(m.phone||"")+' · '+esc(m.district||"")+'</div>'+(m.skills?'<div>Навыки: '+esc(m.skills)+'</div>':'')+(m.about?'<div>'+esc(m.about)+'</div>':'')+
       '<div class="qm-row" style="margin-top:8px">'+(m.status!=="approved"?'<button class="btn btn-primary btn-sm" data-act="mApprove" data-id="'+m.id+'">Одобрить</button>':'')+(m.status!=="rejected"?'<button class="btn btn-secondary btn-sm" data-act="mReject" data-id="'+m.id+'">Отклонить</button>':'')+'</div></div>'}).join("")+'</div>':'<div class="qm-card qm-muted">Мастеров пока нет.</div>';
+  }else if(tab==="taken"){
+    var ts=(await gQuery("orders",[["status","==","taken"]])).sort(function(a,b){return (b.updatedAt||0)-(a.updatedAt||0)});
+    h+='<div class="qm-muted" style="margin-bottom:8px">Заказы в работе. Если клиент не может показать QR (потерял телефон, спор) — завершите заказ вручную. Действие записывается в заказ.</div>';
+    h+=ts.length?'<div style="display:grid;gap:10px">'+ts.map(function(o){return '<div class="qm-card"><b>'+esc(o.title)+'</b><div class="qm-muted">Мастер: '+esc(o.masterName||"")+' · клиент: '+esc(o.clientName||"")+' · '+money(o.price)+'</div><div class="qm-row" style="margin-top:8px"><button class="btn btn-primary btn-sm" data-act="admDone" data-id="'+o.id+'">Завершить без QR</button><button class="btn btn-secondary btn-sm" data-act="admCancel" data-id="'+o.id+'">Отменить заказ</button></div></div>'}).join("")+'</div>':'<div class="qm-card qm-muted">Заказов в работе нет.</div>';
   }else if(tab==="fees"){
     var os=(await gQuery("orders",[["status","==","done"]])).sort(function(a,b){return (a.feePaid?1:0)-(b.feePaid?1:0)||b.doneAt-a.doneAt});
     var sum=os.filter(function(o){return !o.feePaid}).reduce(function(s,o){return s+feeOf(o)},0);
@@ -1124,6 +1146,8 @@ var ACT={
   hide(id){var h=[];try{h=JSON.parse(localStorage.getItem("qm:hidden")||"[]")}catch(e){}h.push(id);try{localStorage.setItem("qm:hidden",JSON.stringify(h))}catch(e){}},
   async mApprove(id){await gPatch("masters",id,{status:"approved",note:""});toast("Мастер одобрен")},
   async mReject(id){var n=prompt("Причина отклонения:","");if(n==null)return;await gPatch("masters",id,{status:"rejected",note:n});toast("Отклонено")},
+  async admDone(id){var n=prompt("Причина завершения без QR (обязательно):","");if(n==null)return;if(!n.trim()){toast("Укажите причину",1);return}var u=me();await gPatch("orders",id,{status:"done",doneAt:Date.now(),doneBy:"admin",doneNote:n.trim().slice(0,300),doneAdminId:u.uid,updatedAt:Date.now()});toast("Заказ завершён вручную")},
+  async admCancel(id){if(!confirm("Отменить заказ?"))return;await gPatch("orders",id,{status:"cancelled",updatedAt:Date.now()});toast("Заказ отменён")},
   async paid(id){await gPatch("orders",id,{feePaid:true,updatedAt:Date.now()});toast("Оплата отмечена")},
   async unpaid(id){await gPatch("orders",id,{feePaid:false,updatedAt:Date.now()})},
   async rApprove(id){await gPatch("reviews",id,{status:"approved"});RAT=null;toast("Отзыв опубликован")},
@@ -1175,7 +1199,7 @@ document.addEventListener("submit",function(e){
   }else if(kind==="review"){
     var rating=Number(fd.get("rating")),text=String(fd.get("text")||"").trim(),orgId=f.getAttribute("data-org");
     if(!(rating>=1&&rating<=5)){toast("Поставьте оценку",1);btn.disabled=false;return}
-    job=gGet("reviews",orgId+"_"+u.uid).then(function(old){var row={orgId:orgId,userId:u.uid,userName:u.name,rating:rating,text:text.slice(0,1000),status:"pending",createdAt:old?old.createdAt:Date.now(),updatedAt:Date.now()};if(old&&old.reply)row.reply=old.reply;return gSet("reviews",orgId+"_"+u.uid,row)}).then(function(){RAT=null;toast("Спасибо! Отзыв появится после проверки");drawReviews(true)});
+    job=gGet("reviews",orgId+"_"+u.uid).then(function(old){var row={orgId:orgId,userId:u.uid,userName:u.name,rating:rating,text:text.slice(0,1000),status:"pending",createdAt:old?old.createdAt:Date.now(),updatedAt:Date.now()};if(old&&old.reply)row.reply=old.reply;var ph=f.__ph||(old&&old.photos)||[];if(ph.length)row.photos=ph.slice(0,3);return gSet("reviews",orgId+"_"+u.uid,row)}).then(function(){RAT=null;toast("Спасибо! Отзыв появится после проверки");drawReviews(true)});
   }
   if(job)job.catch(function(err){toast(errText(err),1)}).then(function(){btn.disabled=false});
 });
@@ -1298,17 +1322,212 @@ function setClientCode(code){
 }
 document.addEventListener("change",function(e){var i=e.target;if(i&&i.name==="code"&&i.closest&&i.closest("[data-pform]")){var c=up(i.value).slice(0,8);if(c.length>=4){var sf=i.closest("[data-pform=sale]");if(sf){var oo2=qs().get("o");location.hash="#"+path()+"?"+(oo2?"o="+encodeURIComponent(oo2)+"&":"")+"code="+c}else setClientCode(c)}}});
 ACT.qrBig=async function(code){var ov=document.createElement("div");ov.style.cssText="position:fixed;inset:0;z-index:9998;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px";ov.innerHTML='<div style="width:min(92vw,420px)">'+qrSvg(qrPayload(code),420).replace('width="420" height="420"','style="width:100%;height:auto"')+'</div><div style="font:800 34px monospace;letter-spacing:4px">'+esc(code.slice(0,3)+" "+code.slice(3))+'</div><div class="qm-muted">Покажите QR кассиру. Нажмите, чтобы закрыть</div>';ov.onclick=function(){ov.remove()};document.body.appendChild(ov)};
-ACT.scan=async function(){
+/* ===== QR: декодер (версии 1–5, коррекция L) для браузеров без BarcodeDetector ===== */
+var QD=(function(){
+  var EXP=[],LOG=[],x=1,i;for(i=0;i<255;i++){EXP[i]=x;LOG[x]=i;x<<=1;if(x&256)x^=0x11D}for(i=255;i<512;i++)EXP[i]=EXP[i-255];
+  function mul(a,b){return a&&b?EXP[LOG[a]+LOG[b]]:0}
+  function dv(a,b){return a?EXP[(LOG[a]+255-LOG[b])%255]:0}
+  function rs(cw,ne){
+    var n=cw.length,S=[],ok=true,j,k;
+    for(k=0;k<ne;k++){var s=0;for(j=0;j<n;j++)s=mul(s,EXP[k])^cw[j];S.push(s);if(s)ok=false}
+    if(ok)return cw;
+    var C=[1],B=[1],L=0,m=1,b=1;
+    for(var n0=0;n0<ne;n0++){
+      var d=S[n0];for(k=1;k<=L;k++)d^=mul(C[k]||0,S[n0-k]);
+      if(d===0){m++;continue}
+      var coef=dv(d,b),T=C.slice();
+      for(k=0;k<B.length;k++)C[k+m]=(C[k+m]||0)^mul(coef,B[k]);
+      if(2*L<=n0){L=n0+1-L;B=T;b=d;m=1}else m++;
+    }
+    if(L>ne/2)return null;
+    var pos=[];for(j=0;j<n;j++){var p=n-1-j,xi=EXP[(255-p)%255];
+      var sv=0,xp=1;for(k=0;k<C.length;k++){sv^=mul(C[k]||0,xp);xp=mul(xp,xi)}
+      if(sv===0)pos.push(j)}
+    if(pos.length!==L)return null;
+    var om=[];for(k=0;k<ne;k++){var o=0;for(j=0;j<=k;j++)o^=mul(S[j],C[k-j]||0);om.push(o)}
+    var out=cw.slice();
+    pos.forEach(function(jj){var p=n-1-jj,xi=EXP[(255-p)%255],Xj=EXP[p%255],ov=0,xp=1,t;
+      for(t=0;t<om.length;t++){ov^=mul(om[t],xp);xp=mul(xp,xi)}
+      var dp=0;xp=1;for(t=1;t<C.length;t+=2){dp^=mul(C[t]||0,xp);xp=mul(xp,mul(xi,xi))}
+      if(!dp)return;out[jj]^=mul(Xj,dv(ov,dp))});
+    for(k=0;k<ne;k++){var s2=0;for(j=0;j<n;j++)s2=mul(s2,EXP[k])^out[j];if(s2)return null}
+    return out;
+  }
+  function binarize(g,w,h){
+    var W=w+1,I=new Float64Array(W*(h+1)),y,xx;
+    for(y=0;y<h;y++){var row=0;for(xx=0;xx<w;xx++){row+=g[y*w+xx];I[(y+1)*W+xx+1]=I[y*W+xx+1]+row}}
+    var r=Math.max(6,Math.round(Math.min(w,h)/14)),out=new Uint8Array(w*h);
+    for(y=0;y<h;y++){var y0=Math.max(0,y-r),y1=Math.min(h,y+r+1);
+      for(xx=0;xx<w;xx++){var x0=Math.max(0,xx-r),x1=Math.min(w,xx+r+1);
+        var sum=I[y1*W+x1]-I[y0*W+x1]-I[y1*W+x0]+I[y0*W+x0],mean=sum/((x1-x0)*(y1-y0));
+        out[y*w+xx]=g[y*w+xx]<mean*0.9-3?1:0}}
+    return out;
+  }
+  function ratioOk(c){
+    var t=c[0]+c[1]+c[2]+c[3]+c[4];if(t<7)return 0;var ms=t/7,mx=ms/1.6;
+    return Math.abs(c[0]-ms)<mx&&Math.abs(c[1]-ms)<mx&&Math.abs(c[2]-3*ms)<3*mx&&Math.abs(c[3]-ms)<mx&&Math.abs(c[4]-ms)<mx?ms:0;
+  }
+  function finders(bin,w,h){
+    var cands=[],y,x,k;
+    for(y=0;y<h;y+=1){
+      var runs=[],cur=bin[y*w],st=0;
+      for(x=1;x<=w;x++){var v=x<w?bin[y*w+x]:2;if(v!==cur){runs.push([cur,st,x-st]);cur=v;st=x}}
+      for(k=0;k+4<runs.length;k++){
+        if(runs[k][0]!==1)continue;
+        var c=[runs[k][2],runs[k+1][2],runs[k+2][2],runs[k+3][2],runs[k+4][2]],ms=ratioOk(c);if(!ms)continue;
+        var cx=runs[k+2][1]+runs[k+2][2]/2;
+        // вертикальная проверка
+        var xi=Math.floor(cx),vc=[0,0,0,0,0],yy=y,top=y;
+        while(yy>=0&&bin[yy*w+xi]){vc[2]++;yy--}top=yy+1;
+        while(yy>=0&&!bin[yy*w+xi]){vc[1]++;yy--}
+        while(yy>=0&&bin[yy*w+xi]){vc[0]++;yy--}
+        yy=y+1;
+        while(yy<h&&bin[yy*w+xi]){vc[2]++;yy++}
+        var bottom=yy;
+        while(yy<h&&!bin[yy*w+xi]){vc[3]++;yy++}
+        while(yy<h&&bin[yy*w+xi]){vc[4]++;yy++}
+        var vms=ratioOk(vc);if(!vms)continue;
+        var cy=(top+bottom)/2,sz=(ms+vms)/2;
+        var found=false;
+        for(var q=0;q<cands.length;q++){var cd=cands[q];if(Math.abs(cd.x-cx)<sz*1.5&&Math.abs(cd.y-cy)<sz*1.5&&Math.abs(cd.s-sz)<sz*0.7){cd.x=(cd.x*cd.n+cx)/(cd.n+1);cd.y=(cd.y*cd.n+cy)/(cd.n+1);cd.s=(cd.s*cd.n+sz)/(cd.n+1);cd.n++;found=true;break}}
+        if(!found)cands.push({x:cx,y:cy,s:sz,n:1});
+      }
+    }
+    return cands.filter(function(c){return c.n>=2}).sort(function(a,b){return b.n-a.n}).slice(0,8);
+  }
+  function pickTriple(c){
+    var best=null,bs=1e18,a,b,d;
+    for(a=0;a<c.length;a++)for(b=a+1;b<c.length;b++)for(d=b+1;d<c.length;d++){
+      var P=[c[a],c[b],c[d]],i2,j2,k2;
+      for(i2=0;i2<3;i2++){var o=P[i2],p=P[(i2+1)%3],q=P[(i2+2)%3];
+        var l1=Math.hypot(p.x-o.x,p.y-o.y),l2=Math.hypot(q.x-o.x,q.y-o.y),l3=Math.hypot(p.x-q.x,p.y-q.y);
+        var sc=Math.abs(l1-l2)/Math.max(l1,l2)+Math.abs(l3-Math.SQRT2*(l1+l2)/2)/l3+Math.abs(o.s-p.s)/o.s+Math.abs(o.s-q.s)/o.s;
+        // угол при o должен быть ≈90°
+        var dot=((p.x-o.x)*(q.x-o.x)+(p.y-o.y)*(q.y-o.y))/(l1*l2);sc+=Math.abs(dot)*2;
+        if(sc<bs){bs=sc;best={tl:o,a:p,b:q}}}}
+    if(!best||bs>1.2)return null;
+    var cr=(best.a.x-best.tl.x)*(best.b.y-best.tl.y)-(best.a.y-best.tl.y)*(best.b.x-best.tl.x);
+    return cr>0?{tl:best.tl,tr:best.a,bl:best.b}:{tl:best.tl,tr:best.b,bl:best.a};
+  }
+  function homography(src,dst){ // 4 точек: (u,v)->(x,y)
+    var A=[],bv=[],i2;
+    for(i2=0;i2<4;i2++){var u=src[i2][0],v=src[i2][1],X=dst[i2][0],Y=dst[i2][1];
+      A.push([u,v,1,0,0,0,-u*X,-v*X]);bv.push(X);A.push([0,0,0,u,v,1,-u*Y,-v*Y]);bv.push(Y)}
+    var n=8,M=A.map(function(r,i3){return r.concat([bv[i3]])}),c,r,k;
+    for(c=0;c<n;c++){var p=c;for(r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;if(Math.abs(M[p][c])<1e-12)return null;var t=M[c];M[c]=M[p];M[p]=t;
+      for(r=0;r<n;r++){if(r===c)continue;var f=M[r][c]/M[c][c];for(k=c;k<=n;k++)M[r][k]-=f*M[c][k]}}
+    var h=[];for(c=0;c<n;c++)h.push(M[c][n]/M[c][c]);
+    return function(u,v){var den=h[6]*u+h[7]*v+1;return [(h[0]*u+h[1]*v+h[2])/den,(h[3]*u+h[4]*v+h[5])/den]};
+  }
+  function reserved(ver){
+    var size=17+4*ver,R=[],i2,r,c;for(i2=0;i2<size;i2++)R.push(new Array(size).fill(false));
+    function mk(rr,cc){if(rr>=0&&cc>=0&&rr<size&&cc<size)R[rr][cc]=true}
+    for(r=-1;r<=7;r++)for(c=-1;c<=7;c++){mk(r,c);mk(r,size-7+c);mk(size-7+r,c)}
+    for(i2=8;i2<size-8;i2++){mk(6,i2);mk(i2,6)}
+    if(ver>=2){var ac=size-7;for(r=-2;r<=2;r++)for(c=-2;c<=2;c++)mk(ac+r,ac+c)}
+    for(i2=0;i2<9;i2++){mk(8,i2);mk(i2,8)}
+    for(i2=0;i2<8;i2++){mk(8,size-1-i2);mk(size-1-i2,8)}
+    mk(size-8,8);
+    return R;
+  }
+  var FMT=[];(function(){for(var d=0;d<32;d++){var rm=d;for(var k=0;k<10;k++)rm=(rm<<1)^((rm>>>9)*0x537);FMT.push([((d<<10)|(rm&1023))^0x5412,d])}})();
+  function pop(v){var c=0;while(v){c+=v&1;v>>=1}return c}
+  var MASKS=[function(i,j){return (i+j)%2===0},function(i,j){return i%2===0},function(i,j){return j%3===0},function(i,j){return (i+j)%3===0},
+    function(i,j){return (Math.floor(i/2)+Math.floor(j/3))%2===0},function(i,j){return (i*j)%2+(i*j)%3===0},function(i,j){return ((i*j)%2+(i*j)%3)%2===0},function(i,j){return ((i+j)%2+(i*j)%3)%2===0}];
+  var DATA=[19,34,55,80,108],ECC=[7,10,15,20,26],TOTAL=[26,44,70,100,134];
+  function readGrid(G,size){
+    var ver=(size-17)/4;if(ver<1||ver>5||ver%1)return null;
+    function bit(xc,yr){return G[yr][xc]}
+    var f1=0,k;for(k=0;k<=5;k++)f1|=bit(8,k)<<k;f1|=bit(8,7)<<6;f1|=bit(8,8)<<7;f1|=bit(7,8)<<8;for(k=9;k<15;k++)f1|=bit(14-k,8)<<k;
+    var f2=0;for(k=0;k<8;k++)f2|=bit(size-1-k,8)<<k;for(k=8;k<15;k++)f2|=bit(8,size-15+k)<<k;
+    var best=null,bd=99;FMT.forEach(function(e){var d=Math.min(pop(e[0]^f1),pop(e[0]^f2));if(d<bd){bd=d;best=e[1]}});
+    if(bd>3)return null;
+    var ecl=best>>3,mask=best&7;if(ecl!==1)return null; // только L
+    var R=reserved(ver),bits=[],up=true,col,n,r,c2,cc;
+    for(col=size-1;col>0;col-=2){if(col===6)col--;
+      for(n=0;n<size;n++){r=up?size-1-n:n;for(cc=0;cc<2;cc++){c2=col-cc;if(!R[r][c2]){var b=G[r][c2];if(MASKS[mask](r,c2))b^=1;bits.push(b)}}}up=!up}
+    var cw=[],i2;for(i2=0;i2<TOTAL[ver-1];i2++){var v=0;for(k=0;k<8;k++)v=(v<<1)|(bits[i2*8+k]||0);cw.push(v)}
+    var fixed=rs(cw,ECC[ver-1]);if(!fixed)return null;
+    var data=fixed.slice(0,DATA[ver-1]),bs=[];data.forEach(function(b){for(var t=7;t>=0;t--)bs.push((b>>t)&1)});
+    var pos=0;function rd(n2){var v=0;for(var t=0;t<n2;t++)v=(v<<1)|bs[pos++];return v}
+    if(rd(4)!==4)return null;var len=rd(8),arr=[];for(i2=0;i2<len;i2++)arr.push(rd(8));
+    try{return new TextDecoder().decode(new Uint8Array(arr))}catch(e){return null}
+  }
+  function sample(bin,w,h,H,size){
+    var G=[],r,c;
+    for(r=0;r<size;r++){var row=[];for(c=0;c<size;c++){
+      var cnt=0,offs=[[0,0],[-.25,0],[.25,0],[0,-.25],[0,.25]];
+      for(var t=0;t<5;t++){var p=H(c+.5+offs[t][0],r+.5+offs[t][1]),px=Math.round(p[0]-.5),py=Math.round(p[1]-.5);
+        if(px>=0&&py>=0&&px<w&&py<h)cnt+=bin[py*w+px]}
+      row.push(cnt>=3?1:0)}G.push(row)}
+    return G;
+  }
+  function decodeBin(bin,w,h){
+    var f=finders(bin,w,h);if(f.length<3)return null;
+    var tri=pickTriple(f);if(!tri)return null;
+    var tl=tri.tl,tr=tri.tr,bl=tri.bl,ms=(tl.s+tr.s+bl.s)/3,dist=(Math.hypot(tr.x-tl.x,tr.y-tl.y)+Math.hypot(bl.x-tl.x,bl.y-tl.y))/2;
+    var dim=dist/ms+7,ver=Math.round((dim-17)/4);if(ver<1)ver=1;
+    var vers=[ver,ver-1,ver+1].filter(function(v){return v>=1&&v<=5}),res=null;
+    for(var vi=0;vi<vers.length&&!res;vi++){
+      var v=vers[vi],size=17+4*v,src=[[3.5,3.5],[size-3.5,3.5],[3.5,size-3.5]],dst=[[tl.x,tl.y],[tr.x,tr.y],[bl.x,bl.y]];
+      var fourthDst=[tr.x+bl.x-tl.x,tr.y+bl.y-tl.y];
+      var H0=homography(src.concat([[size-3.5,size-3.5]]),dst.concat([fourthDst]));if(!H0)continue;
+      var Hs=[H0];
+      if(v>=2){ // поиск выравнивающего узора
+        var pr=H0(size-6.5,size-6.5),bestS=-1,bx=pr[0],by=pr[1],step=Math.max(1,ms/3),R2=ms*2.5,dx,dy;
+        for(dy=-R2;dy<=R2;dy+=step)for(dx=-R2;dx<=R2;dx+=step){
+          var s=0,ax=pr[0]+dx,ay=pr[1]+dy,a,b2;
+          for(a=-2;a<=2;a++)for(b2=-2;b2<=2;b2++){var px=Math.round(ax+a*ms),py=Math.round(ay+b2*ms);if(px<0||py<0||px>=w||py>=h){s-=5;continue}
+            var want=Math.max(Math.abs(a),Math.abs(b2))!==1?1:0;s+=(bin[py*w+px]===want)?1:-1}
+          if(s>bestS){bestS=s;bx=ax;by=ay}}
+        if(bestS>=17){var H1=homography(src.concat([[size-6.5,size-6.5]]),dst.concat([[bx,by]]));if(H1)Hs.unshift(H1)}
+      }
+      for(var hi=0;hi<Hs.length&&!res;hi++){res=readGrid(sample(bin,w,h,Hs[hi],size),size)}
+    }
+    return res;
+  }
+  function decode(img){
+    var w=img.width,h=img.height,d=img.data,g=new Uint8Array(w*h),i2;
+    for(i2=0;i2<w*h;i2++)g[i2]=(77*d[4*i2]+150*d[4*i2+1]+29*d[4*i2+2])>>8;
+    var r=decodeBin(binarize(g,w,h),w,h);if(r)return r;
+    var inv=new Uint8Array(w*h);for(i2=0;i2<w*h;i2++)inv[i2]=255-g[i2];
+    return decodeBin(binarize(inv,w,h),w,h);
+  }
+  return {decode:decode};
+})();
+function qrDecodeCanvas(cv){return QD.decode(cv.getContext("2d").getImageData(0,0,cv.width,cv.height))}
+
+function openScanner(onRaw,title){
   var ov=document.createElement("div");ov.style.cssText="position:fixed;inset:0;z-index:9998;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;color:#fff;font:15px system-ui,sans-serif;text-align:center";
-  ov.innerHTML='<div id="qp-msg" style="margin-bottom:10px">Наведите камеру на QR клиента</div><video playsinline muted style="width:100%;max-width:420px;border-radius:12px;background:#222"></video><button class="btn btn-secondary" style="margin-top:14px" id="qp-x">Закрыть</button>';
-  document.body.appendChild(ov);var stream=null,stop=false;
+  ov.innerHTML='<div id="qp-msg" style="margin-bottom:10px">'+(title||"Наведите камеру на QR")+'</div><video playsinline muted style="width:100%;max-width:420px;border-radius:12px;background:#222"></video><div class="qm-row" style="margin-top:14px;justify-content:center;gap:10px"><label class="btn btn-secondary" style="cursor:pointer">📷 Сфотографировать QR<input type="file" accept="image/*" capture="environment" hidden></label><button class="btn btn-secondary" id="qp-x" type="button">Закрыть</button></div>';
+  document.body.appendChild(ov);var stream=null,stop=false,msg=ov.querySelector("#qp-msg");
   function close(){stop=true;if(stream)stream.getTracks().forEach(function(t){t.stop()});ov.remove()}
   ov.querySelector("#qp-x").onclick=close;
-  if(!("BarcodeDetector" in window)){ov.querySelector("#qp-msg").innerHTML="Ваш браузер не умеет сканировать QR внутри приложения.<br>Откройте обычную камеру телефона и наведите на QR клиента: откроется эта страница с кодом клиента. Или введите код вручную."; return}
-  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false})}catch(e){ov.querySelector("#qp-msg").textContent="Нет доступа к камере. Разрешите камеру в настройках браузера или введите код вручную.";return}
-  var vid=ov.querySelector("video");vid.srcObject=stream;try{vid.play().catch(function(){})}catch(e){}
-  var det=new BarcodeDetector({formats:["qr_code"]});
-  (async function loop(){if(stop)return;try{var r=await det.detect(vid);for(var i=0;i<r.length;i++){var c=parseScan(r[i].rawValue);if(c){close();var oo=qs().get("o");location.hash="#"+path()+"?"+(oo?"o="+encodeURIComponent(oo)+"&":"")+"code="+c;toast("Код клиента: "+c);return}}}catch(e){}setTimeout(loop,250)})();
+  ov.querySelector("input[type=file]").onchange=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;
+    var im=new Image(),url=URL.createObjectURL(f);
+    im.onload=function(){var sc=Math.min(1,1000/Math.max(im.width,im.height)),cv=document.createElement("canvas");cv.width=Math.round(im.width*sc);cv.height=Math.round(im.height*sc);cv.getContext("2d").drawImage(im,0,0,cv.width,cv.height);URL.revokeObjectURL(url);
+      var r=null;try{r=qrDecodeCanvas(cv)}catch(er){}if(r&&onRaw(r)){close();return}msg.textContent="QR на фото не найден. Снимите ближе и ровнее.";};
+    im.onerror=function(){msg.textContent="Не удалось открыть фото"};im.src=url;e.target.value=""};
+  return navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false}).then(function(s){
+    stream=s;var vid=ov.querySelector("video");vid.srcObject=stream;try{vid.play().catch(function(){})}catch(e){}
+    var det=null;if("BarcodeDetector" in window){try{det=new BarcodeDetector({formats:["qr_code"]})}catch(e){}}
+    var cv=document.createElement("canvas"),cx=cv.getContext("2d");
+    (async function loop(){if(stop)return;
+      try{
+        if(det){var r=await det.detect(vid);for(var i=0;i<r.length;i++){if(onRaw(r[i].rawValue)){close();return}}}
+        if(vid.videoWidth){var sc=Math.min(1,640/vid.videoWidth);cv.width=Math.round(vid.videoWidth*sc);cv.height=Math.round(vid.videoHeight*sc);cx.drawImage(vid,0,0,cv.width,cv.height);
+          var t=qrDecodeCanvas(cv);if(t&&onRaw(t)){close();return}}
+      }catch(e){}
+      setTimeout(loop,det?250:180)})();
+  },function(){msg.textContent="Нет доступа к камере. Разрешите камеру в настройках браузера, нажмите «Сфотографировать QR» или введите код вручную."});
+}
+ACT.scan=async function(){
+  await openScanner(function(raw){var c=parseScan(raw);if(!c)return false;var oo=qs().get("o");location.hash="#"+path()+"?"+(oo?"o="+encodeURIComponent(oo)+"&":"")+"code="+c;toast("Код клиента: "+c);return true},"Наведите камеру на QR клиента");
+};
+ACT.scanDone=async function(id){
+  await openScanner(function(raw){var d=parseDone(raw);if(!d)return false;
+    if(d.id!==id){toast("Это QR другого заказа",1);return false}
+    completeOrder(d.id,d.code).then(function(){toast("Заказ завершён. Комиссия начислена");render(true)},function(e){toast(errText(e),1)});return true},"Наведите камеру на QR заказчика");
 };
 
 VIEWS["/points"]=async function(){
@@ -1440,6 +1659,7 @@ ACT.txVoid=async function(id){
   ops.push({t:"patch",n:"ltx",id:id,p:{status:"void",voidedAt:Date.now(),voidedBy:u.uid}});ops.push(audit(t.orgId,u,"void",id));
   await commit(ops);toast("Операция отменена");
 };
+PF.doneCode=async function(fd,f,u){var c=up(fd.get("code"));if(c.length!==8)throw new Error("Код — 8 символов");await completeOrder(String(fd.get("id")),c);return "Заказ завершён. Комиссия начислена"};
 PF.rules=async function(fd,f,u){var o=await ownOrg(fd,u);function n(k,a,b){var v=Math.round(Number(fd.get(k)));if(!(v>=a&&v<=b))throw new Error("Поле «"+k+"»: от "+a+" до "+b);return v}
   var d={orgId:o.id,ownerId:u.uid,discountPct:n("discountPct",0,50),earnPct:n("earnPct",0,30),maxSpendPct:n("maxSpendPct",0,100),minPurchase:n("minPurchase",0,100000000),expiryDays:n("expiryDays",0,3650),active:!!fd.get("active"),updatedAt:Date.now()};
   await commit([{t:"set",n:"loyaltyRules",id:o.id,data:d},audit(o.id,u,"rules",o.id,{rules:rulesText(d)})]);return "Программа сохранена"};
@@ -1505,14 +1725,14 @@ async function drawReviews(force){
   var isOwner=u&&org&&org.ownerId===u.uid,n=list.length,avg=n?list.reduce(function(s,r){return s+r.rating},0)/n:0;
   var RR0=await getRules(id),h=((RR0.active&&(RR0.discountPct||RR0.earnPct))?'<div class="qm-promo" style="margin:0 0 10px"><b>Программа лояльности QALA</b><div class="small">'+esc(rulesText(RR0))+'</div></div>':'')+'<div class="qm-row" style="margin-bottom:10px"><button class="btn btn-secondary btn-sm" data-act="share" data-id="'+esc(id)+'">🔗 Поделиться и получать баллы</button></div><div class="qm-row qm-between"><h2 style="margin:0;font-size:18px">Отзывы</h2>'+(n?'<div><span class="qm-stars">'+stars(avg)+'</span> <b>'+avg.toFixed(1).replace(".",",")+'</b> <span class="qm-muted">('+n+')</span></div>':'')+'</div>';
   if(!n)h+='<p class="qm-muted">Пока нет отзывов. Будьте первым!</p>';
-  list.forEach(function(r){h+='<div class="qm-rev"><div class="qm-row qm-between"><b>'+esc(r.userName||"Покупатель")+'</b><span class="qm-muted">'+dt(r.createdAt)+'</span></div><div class="qm-stars">'+stars(r.rating)+'</div>'+(r.text?'<div>'+esc(r.text)+'</div>':'')+
+  list.forEach(function(r){h+='<div class="qm-rev"><div class="qm-row qm-between"><b>'+esc(r.userName||"Покупатель")+'</b><span class="qm-muted">'+dt(r.createdAt)+'</span></div><div class="qm-stars">'+stars(r.rating)+'</div>'+(r.text?'<div>'+esc(r.text)+'</div>':'')+phs(r)+
     (r.reply?'<div style="margin-top:6px;padding:8px 10px;background:#eef4fc;border-radius:10px"><b>Ответ организации:</b> '+esc(r.reply)+'</div>':(isOwner?'<button class="btn btn-ghost btn-sm" data-act="reply" data-id="'+r.id+'">Ответить</button>':''))+'</div>'});
   if(!u)h+='<p style="margin-top:10px"><a href="#/login">Войдите</a>, чтобы оставить отзыв.</p>';
   else if(isOwner)h+='<p class="qm-muted">Свою организацию оценивать нельзя.</p>';
   else{
     if(mineR)h+='<div class="qm-muted" style="margin-top:8px">Ваш отзыв: '+stBadge(mineR.status)+' <button class="btn btn-ghost btn-sm" data-act="revDelete" data-id="'+mineR.id+'">Удалить</button></div>';
     h+='<form data-form="review" data-org="'+esc(id)+'" style="margin-top:10px"><div class="qm-f">Ваша оценка<div class="qm-row">'+[5,4,3,2,1].map(function(i){return '<label class="qm-chk"><input type="radio" name="rating" value="'+i+'"'+(mineR&&mineR.rating===i?" checked":"")+'> '+i+' ★</label>'}).join("")+'</div></div>'+
-      '<label class="qm-f">Отзыв<textarea name="text" maxlength="1000">'+esc(mineR&&mineR.text||"")+'</textarea></label><button class="btn btn-primary btn-sm" type="submit">'+(mineR?"Изменить отзыв":"Отправить отзыв")+'</button><span class="qm-muted"> Отзыв публикуется после проверки.</span></form>';
+      '<label class="qm-f">Отзыв<textarea name="text" maxlength="1000">'+esc(mineR&&mineR.text||"")+'</textarea></label><div class="qm-f">Фото (до 3, необязательно)<input type="file" name="photos" accept="image/*" multiple><div class="qm-ph" data-prev>'+((mineR&&mineR.photos||[]).map(function(u){return '<img src="'+esc(u)+'" alt="">'}).join(""))+'</div></div><button class="btn btn-primary btn-sm" type="submit">'+(mineR?"Изменить отзыв":"Отправить отзыв")+'</button><span class="qm-muted"> Отзыв публикуется после проверки.</span></form>';
   }
   box.innerHTML=h;drawing=0;
 }
@@ -1576,6 +1796,69 @@ function injectNav(){
   var u=me();
   if(p==="/admin"&&u&&u.admin&&!main.querySelector("[data-qma]")){var st2=main.querySelector(".stack");if(st2){var c2=document.createElement("a");c2.dataset.qma=1;c2.className="btn btn-secondary";c2.href="#/admin/masters";c2.textContent="Электрики, комиссии и отзывы";st2.appendChild(c2);var c3=document.createElement("a");c3.className="btn btn-secondary";c3.href="#/admin/points";c3.textContent="Баллы: начисления";st2.appendChild(c3)}}
 }
+/* ===== УЛУЧШЕНИЯ ФОРМ: +7, адрес, режим работы, быстрый вход, фото орг. для админа ===== */
+function setVal(el,v){try{var pr=el.tagName==="TEXTAREA"?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(pr,"value").set.call(el,v);el.dispatchEvent(new Event("input",{bubbles:true}))}catch(e){el.value=v}}
+function fieldByLabel(re){var ls=document.querySelectorAll("main.page label[for], #root label[for]");for(var i=0;i<ls.length;i++){var l=ls[i];if(re.test((l.textContent||"").trim())){var inp=document.getElementById(l.getAttribute("for"));if(inp&&(inp.tagName==="INPUT"||inp.tagName==="TEXTAREA"))return {label:l.parentNode,input:inp,lab:l}}}return null}
+/* +7 */
+document.addEventListener("focusin",function(e){var i=e.target;if(!i||i.tagName!=="INPUT")return;
+  var isPh=i.type==="tel"||/phone|whatsapp/i.test(i.name||"");if(!isPh||i.readOnly||i.disabled)return;
+  if(!i.value.trim())setVal(i,"+7 ");
+  var c=function(){var d=i.value.replace(/\D/g,"");if(d==="7"||d==="")setVal(i,"")};i.addEventListener("blur",c,{once:true})});
+/* быстрый вход */
+document.addEventListener("input",function(e){var i=e.target;if(i&&i.type==="email"&&path()==="/login"){try{localStorage.setItem("qm:lastEmail",i.value)}catch(x){}}});
+function enhLogin(){
+  if(path()!=="/login")return;var em=$("main.page input[type=email]"),pw=$("main.page input[type=password]");if(!em||!pw)return;
+  if(!em.dataset.qmq){em.dataset.qmq=1;em.setAttribute("autocomplete","username");var last="";try{last=localStorage.getItem("qm:lastEmail")||""}catch(x){}if(last&&!em.value){setVal(em,last);setTimeout(function(){pw.focus()},50)}}
+  if(!pw.dataset.qmq){pw.dataset.qmq=1;var b=document.createElement("button");b.type="button";b.className="btn btn-ghost btn-sm";b.textContent="👁 Показать пароль";b.style.marginTop="6px";b.addEventListener("click",function(){var s=pw.type==="password";pw.type=s?"text":"password";b.textContent=s?"🙈 Скрыть пароль":"👁 Показать пароль"});(pw.closest("label")||pw).insertAdjacentElement("afterend",b)}
+}
+/* подсказки адреса */
+var ADT=0,ADR=null;
+function adBox(inp){var b=$("#qm-adr");if(!b){b=document.createElement("div");b.id="qm-adr";b.style.cssText="position:absolute;z-index:60;background:#fff;border:1px solid #cfd8e3;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.15);max-height:260px;overflow:auto";document.body.appendChild(b)}
+  var r=inp.getBoundingClientRect();b.style.left=(r.left+scrollX)+"px";b.style.top=(r.bottom+scrollY+2)+"px";b.style.width=r.width+"px";return b}
+function adHide(){var b=$("#qm-adr");if(b)b.style.display="none"}
+function adLine(a,x){var ad=a.address||{},st=ad.road||ad.pedestrian||ad.footway||ad.neighbourhood||"",hn=ad.house_number||"",city=ad.city||ad.town||ad.village||"";
+  if(st)return st+(hn?", "+hn:"")+(city?", "+city:"");return (x||a.display_name||"").split(",").slice(0,3).join(",").trim()}
+document.addEventListener("input",function(e){var i=e.target;if(!i||i.tagName!=="INPUT")return;var f=fieldByLabel(/^Адрес/);if(!f||f.input!==i)return;
+  clearTimeout(ADT);var q=i.value.trim();if(q.length<3){adHide();return}
+  ADT=setTimeout(function(){
+    var qq=/павлодар/i.test(q)?q:q+", Павлодар";
+    fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&countrycodes=kz&accept-language=ru&viewbox=76.8,52.5,77.2,52.1&q="+encodeURIComponent(qq)).then(function(r){return r.json()}).then(function(a){
+      if(document.activeElement!==i)return;var seen={},items=[];a.forEach(function(x){var s=adLine(x);if(s&&!seen[s]){seen[s]=1;items.push(s)}});
+      var b=adBox(i);if(!items.length){b.style.display="none";return}
+      b.style.display="block";b.innerHTML=items.map(function(s,k){return '<div data-adi="'+k+'" style="padding:10px 12px;cursor:pointer;border-bottom:1px solid #eef2f6">'+esc(s)+'</div>'}).join("");
+      Array.prototype.forEach.call(b.children,function(d,k){d.addEventListener("mousedown",function(ev){ev.preventDefault();setVal(i,items[k]);adHide()});d.addEventListener("touchstart",function(ev){ev.preventDefault();setVal(i,items[k]);adHide()},{passive:false})});
+    }).catch(function(){adHide()})},550)});
+document.addEventListener("focusout",function(e){if(e.target&&e.target.tagName==="INPUT")setTimeout(adHide,200)});
+/* режим работы: дни и время */
+var DAYS=["Пн","Вт","Ср","Чт","Пт","Сб","Вс"],WH=null;
+function whCompose(){var rows=WH.rows,out=[],i=0;
+  while(i<7){var r=rows[i];if(!r.on){i++;continue}var j=i;while(j+1<7&&rows[j+1].on&&rows[j+1].from===r.from&&rows[j+1].to===r.to)j++;
+    var d=j===i?DAYS[i]:(j===i+1?DAYS[i]+", "+DAYS[j]:DAYS[i]+"–"+DAYS[j]);out.push(d+" "+(r.all?"круглосуточно":r.from+"–"+r.to));i=j+1}
+  return out.join("; ")||""}
+function enhHours(){
+  var f=fieldByLabel(/^Режим работы/);var w=$("#qm-wh");
+  if(!f){if(w)w.remove();WH=null;return}
+  if(w&&w.__inp===f.input)return;if(w)w.remove();
+  WH={rows:DAYS.map(function(d,i){return {on:i<5,from:"09:00",to:"18:00",all:false}})};
+  var cur=f.input.value;f.input.style.display="none";
+  w=document.createElement("div");w.id="qm-wh";w.__inp=f.input;w.className="qm-card";w.style.cssText="margin:6px 0 10px;padding:10px";
+  function draw(){w.innerHTML='<div class="small muted" style="margin-bottom:6px">Отметьте рабочие дни и выберите время (крутите колёсико)</div>'+(cur?'<div class="small" style="margin-bottom:6px">Сейчас указано: <b>'+esc(cur)+'</b></div>':'')+
+    WH.rows.map(function(r,i){return '<div style="display:flex;align-items:center;gap:8px;margin:6px 0"><label style="width:54px;display:flex;gap:6px;align-items:center"><input type="checkbox" data-i="'+i+'" data-k="on"'+(r.on?" checked":"")+'><b>'+DAYS[i]+'</b></label>'+
+      (r.on?'<input type="time" class="input" data-i="'+i+'" data-k="from" value="'+r.from+'" style="width:auto"'+(r.all?" disabled":"")+'> — <input type="time" class="input" data-i="'+i+'" data-k="to" value="'+r.to+'" style="width:auto"'+(r.all?" disabled":"")+'><label class="small" style="display:flex;gap:4px;align-items:center"><input type="checkbox" data-i="'+i+'" data-k="all"'+(r.all?" checked":"")+'>24ч</label>':'<span class="muted small">выходной</span>')+'</div>'}).join("")+
+      '<div class="small" style="margin-top:6px">Итог: <b id="qm-whr">'+esc(whCompose()||"—")+'</b></div>'}
+  draw();
+  w.addEventListener("change",function(e){var t=e.target,i=t.getAttribute("data-i");if(i==null)return;var r=WH.rows[+i],k=t.getAttribute("data-k");r[k]=t.type==="checkbox"?t.checked:t.value;cur="";
+    if(e.target.type==="checkbox")draw();else{var o=$("#qm-whr");if(o)o.textContent=whCompose()||"—"}
+    setVal(f.input,whCompose())});
+  f.label.insertAdjacentElement("afterend",w)}
+/* админ: фото организации */
+function enhAdminPhoto(){
+  var m=/^\/businesses\/([^\/]+)$/.exec(path()),u=me();var ex=$("#qm-aph");if(!m||!u||!u.admin){if(ex)ex.remove();return}
+  if(ex)return;var box=$("#qm-rev");if(!box||!window.__photoEdit)return;var id=decodeURIComponent(m[1]);
+  var b=document.createElement("button");b.id="qm-aph";b.className="btn btn-secondary btn-sm";b.textContent="📷 Фото организации (админ)";b.style.marginBottom="10px";
+  b.addEventListener("click",function(){gGet("organizations",id).then(function(o){window.__photoEdit(o||{id:id},function(z){return gPatch("organizations",id,z).then(function(){toast("Фото сохранены");setTimeout(function(){location.reload()},400)})})})});
+  box.insertAdjacentElement("beforebegin",b)}
+
 var LASTERR="";
 window.addEventListener("error",function(e){LASTERR=String(e.message||e.error||"")+(e.filename?" @"+String(e.filename).split("/").pop()+":"+e.lineno:"")});
 window.addEventListener("unhandledrejection",function(e){LASTERR="promise: "+String(e.reason&&e.reason.message||e.reason)});
@@ -1588,7 +1871,7 @@ function diag(){
 }
 var raf=0;
 function sync(){raf=0;try{ensureManager();render(false).catch(function(e){console.warn(e);showErr(e)})}catch(e){console.warn(e);showErr(e)}
-  [injectNav,function(){drawReviews(false)},injectRatings].forEach(function(fn){try{var r=fn();if(r&&r.catch)r.catch(function(e){console.warn(e)})}catch(e){console.warn(e)}})}
+  [injectNav,function(){drawReviews(false)},injectRatings,enhLogin,enhHours,enhAdminPhoto].forEach(function(fn){try{var r=fn();if(r&&r.catch)r.catch(function(e){console.warn(e)})}catch(e){console.warn(e)}})}
 function showErr(e){var m=$("main.page");if(!m||!VIEWS[path()])return;var v=$("#qm-view");if(!v){v=document.createElement("div");v.id="qm-view";v.className="container";m.appendChild(v)}v.innerHTML='<div class="qm-card">Не удалось открыть раздел: '+esc(errText(e))+'</div>'}
 function sched(){if(!raf)raf=requestAnimationFrame(sync)}
 window.addEventListener("hashchange",function(){busy=0;sched()});
@@ -1596,5 +1879,4 @@ var root=$("#root");if(root)new MutationObserver(sched).observe(root,{childList:
 sched();
 };
 </script>
-
 </body></html>
