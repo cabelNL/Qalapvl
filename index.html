@@ -2046,7 +2046,7 @@ document.addEventListener("click",function(e){var t=e.target.closest&&e.target.c
   setTimeout(function(){busy=0;cur="";sched()},400)},true);
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&path()==="/cart"){busy=0;cur="";sched()}});
 document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("[data-cartsend]");if(a&&noSize(cartGroups()[a.getAttribute("data-cartsend")]||[])){e.preventDefault();e.stopPropagation();toast("Выберите размер у товаров",1);return}if(a){var id=a.getAttribute("data-cartsend");SENT[id]=sig(cartGroups()[id]||[]);sentSave();setTimeout(function(){a.textContent="✓ Отправлено · отправить снова"},200)}});
-function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 08.11 14:01";f.appendChild(d)}
+function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 08.11 14:19";f.appendChild(d)}
 function enhCartIcon(){enhStamp();var ta=document.querySelector(".top-actions");if(!ta)return;var b=ta.querySelector("[data-qmcart]");if(!b){b=document.createElement("a");b.dataset.qmcart=1;b.className="icon-btn";b.href="#/cart";b.title="Корзина";b.setAttribute("aria-label","Корзина");b.style.fontSize="20px";b.textContent="🛒";b.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();location.hash="#/cart";busy=0;cur="";sched()});var q=ta.querySelector("[data-qmtq]");if(q)ta.insertBefore(b,q);else ta.appendChild(b)}updCartBadge()}
 
 /* ===== ЗАКАЗЫ МАГАЗИНА: оформление, статусы, выдача по QR, комиссия ===== */
@@ -2147,7 +2147,7 @@ VIEWS["/business/orders"]=async function(){
   var org=P.org,t=qs().get("t")||"act",R=await getRules(org.id);
   var all=(await gQuery("sorders",[["ownerId","==",u.uid]])).filter(function(o){return o.orgId===org.id}).sort(function(a,b){return b.createdAt-a.createdAt});
   for(var k=0;k<all.length;k++)if(all[k].status==="done"&&!all[k].settled){try{await soSettle(all[k],u,org);all[k]=await gGet("sorders",all[k].id)}catch(e){SOERR[all[k].id]=errText(e);console.warn(e)}}
-  SON=all.filter(function(o){return o.status==="new"}).length;updSoBadge();
+  SON=all.filter(function(o){return o.status==="new"}).length;SOACT=all.filter(function(o){return ["new","accepted","ready","shipping"].indexOf(o.status)>=0}).length;updSoBadge();
   var h=head("Заказы магазина","/profile")+boTabs(P.org,P.orgs,t);
   if(t==="cur"){
     var cs=(await gQuery("couriers",[["ownerId","==",u.uid]])).filter(function(c){return c.orgId===org.id});
@@ -2179,7 +2179,7 @@ VIEWS["/business/orders"]=async function(){
     if(o.status==="done")b+='<button class="btn btn-ghost btn-sm" data-act="soRefund" data-id="'+o.id+'">↩ Возврат по QR</button>';
     h+='<div class="qm-row" style="margin-top:8px;flex-wrap:wrap;gap:6px">'+b+'</div>'+soWaBtns(o)+'</div>'});
   return h};
-var SON=0,SOERR={};
+var SON=0,SOACT=0,SOERR={};
 ACT.soRetry=async function(id){var u=me(),o=await gGet('sorders',id),org=await gGet('organizations',o.orgId);await soSettle(o,u,org);toast('Начисление записано')};
 async function soSet(id,p){await gPatch("sorders",id,Object.assign({updatedAt:Date.now()},p))}
 ACT.soAccept=async function(id){await soSet(id,{status:"accepted"});toast("Заказ принят")};
@@ -2242,11 +2242,15 @@ var SOPOLL=0;
 function updSoBadge(){
   var b=document.querySelector("[data-qmso]");if(b){b.href=SON>0?"#/business/orders?t=act&s=new":"#/shop-orders";b.title=SON>0?"Новые заказы: "+SON:"Мои заказы";var d=b.querySelector(".qm-dot");if(SON>0){if(!d){d=document.createElement("span");d.className="qm-dot";b.style.position="relative";b.appendChild(d)}d.textContent=SON}else if(d)d.remove()}
   var a=document.querySelector("[data-qxo]");if(a)a.textContent="Заказы"+(SON?" ("+SON+")":"");
-  var bn=document.getElementById("qm-sobanner"),pp=path(),show=SON>0&&me()&&(pp.indexOf("/business")===0||pp==="/profile"||pp==="/")&&pp!=="/business/orders";
+  var pp=path(),sn0=document.querySelector(".subnav");if(sn0)sn0.style.display=(pp==="/business"&&me())?"none":"";
+  if(pp==="/business"&&me()){var mm=document.querySelector("main.page"),sb=mm&&[].slice.call(mm.querySelectorAll("a")).filter(function(a){return /business\/sales$/.test(a.getAttribute("href")||"")&&/btn/.test(a.className)})[0];
+    if(sb&&!mm.querySelector("[data-qmob]")){var par=sb.parentElement;[["#/business/orders?t=act","Заказы",1],["#/business/partners","Партнёры"],["#/business/promotion","Продвижение"],["#/business/moderation","Модерация"]].forEach(function(x){var a=document.createElement("a");a.className="btn btn-secondary";a.href=x[0];a.dataset.qmob=x[2]?"1":"0";a.style.position="relative";a.textContent=x[1];par.appendChild(a)})}
+    var ob=document.querySelector('[data-qmob="1"]');if(ob){var bd=ob.querySelector(".qm-cnt");if(SOACT>0){if(!bd){bd=document.createElement("span");bd.className="qm-cnt";ob.appendChild(bd)}bd.textContent=SOACT;bd.style.cssText="display:inline-block;min-width:22px;margin-left:8px;padding:1px 7px;border-radius:11px;color:#fff;font-weight:700;font-size:13px;background:"+(SON>0?"#d92d20":"#0f4c9a")}else if(bd)bd.remove()}}
+  var bn=document.getElementById("qm-sobanner"),show=SON>0&&me()&&(pp.indexOf("/business")===0||pp==="/profile"||pp==="/")&&pp!=="/business/orders"&&pp!=="/business";
   if(show&&!bn){var m=document.querySelector("main.page");if(m){bn=document.createElement("a");bn.id="qm-sobanner";bn.href="#/business/orders?t=act&s=new";bn.style.cssText="display:block;margin:10px 16px;padding:12px 14px;border-radius:12px;background:#fff4d6;color:#9a6700;font-weight:700;text-decoration:none";m.insertBefore(bn,m.firstChild)}}
   if(bn){if(!show)bn.remove();else{var t="🛒 Новых заказов: "+SON+" — открыть";if(bn.textContent!==t)bn.textContent=t}}}
 async function checkShop(){var u=me();if(!u||document.hidden)return;
-  try{var os=(await gQuery("sorders",[["ownerId","==",u.uid]])).filter(function(o){return o.status==="new"});SON=os.length;
+  try{var all0=await gQuery("sorders",[["ownerId","==",u.uid]]),os=all0.filter(function(o){return o.status==="new"});SON=os.length;SOACT=all0.filter(function(o){return ["new","accepted","ready","shipping"].indexOf(o.status)>=0}).length;
     var seen=[];try{seen=JSON.parse(localStorage.getItem("qm:seenSO")||"[]")}catch(e){}var fr=os.filter(function(o){return seen.indexOf(o.id)<0});
     if(fr.length&&path()!=="/business/orders"){toast("🛒 Новый заказ № "+fr[0].num+(fr.length>1?" и ещё "+(fr.length-1):"")+". Бизнес → Заказы");try{localStorage.setItem("qm:seenSO",JSON.stringify(seen.concat(fr.map(function(o){return o.id})).slice(-80)))}catch(e){}}
   }catch(e){SON=0}
