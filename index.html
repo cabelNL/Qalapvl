@@ -1112,7 +1112,7 @@ VIEWS["/master"]=async function(){
 
 VIEWS["/admin/masters"]=async function(){
   var u=me();if(!u||!u.admin)return head("Электрики, комиссии и отзывы","/admin")+'<div class="qm-card">Раздел только для администратора.</div>';
-  var tab=qs().get("t")||"masters",h=head("Электрики, комиссии и отзывы","/admin")+'<div class="qm-tabs"><a class="'+(tab==="masters"?"on":"")+'" href="#/admin/masters?t=masters">Электрики</a><a class="'+(tab==="fees"?"on":"")+'" href="#/admin/masters?t=fees">Комиссии</a><a class="'+(tab==="reviews"?"on":"")+'" href="#/admin/masters?t=reviews">Отзывы</a><a class="'+(tab==="taken"?"on":"")+'" href="#/admin/masters?t=taken">В работе</a><a class="'+(tab==="partners"?"on":"")+'" href="#/admin/masters?t=partners">Партнёры'+(PNA?' ('+PNA+')':'')+'</a></div>';
+  var tab=qs().get("t")||"masters",h=head("Электрики, комиссии и отзывы","/admin")+'<div class="qm-tabs"><a class="'+(tab==="masters"?"on":"")+'" href="#/admin/masters?t=masters">Электрики</a><a class="'+(tab==="fees"?"on":"")+'" href="#/admin/masters?t=fees">Комиссии</a><a class="'+(tab==="reviews"?"on":"")+'" href="#/admin/masters?t=reviews">Отзывы</a><a class="'+(tab==="taken"?"on":"")+'" href="#/admin/masters?t=taken">В работе</a><a class="'+(tab==="partners"?"on":"")+'" href="#/admin/masters?t=partners">Партнёры'+(PNA?' ('+PNA+')':'')+'</a><a href="#/admin/shops">Магазины</a></div>';
   if(tab==="masters"){
     var ms=(await gQuery("masters",[])).sort(function(a,b){return (a.status==="pending"?0:1)-(b.status==="pending"?0:1)});
     h+=ms.length?'<div style="display:grid;gap:10px">'+ms.map(function(m){return '<div class="qm-card"><div class="qm-row qm-between"><b>'+esc(m.name)+'</b>'+stBadge(m.status)+'</div><div class="qm-muted">'+esc((m.specs||[]).join(", "))+' · '+esc(m.phone||"")+' · '+esc(m.district||"")+'</div>'+(m.skills?'<div>Навыки: '+esc(m.skills)+'</div>':'')+(m.about?'<div>'+esc(m.about)+'</div>':'')+
@@ -1235,6 +1235,14 @@ async function ensureManager(){
     var ref=await gGet("refCodes",c);if(!ref||ref.uid===u.uid)return;
     await gSet("managers",u.uid,{managerUid:ref.uid,managerName:ref.name,code:c,ownerName:u.name,createdAt:Date.now()});mgT=Date.now()+864e5;
   }catch(e){console.warn("manager",e)}
+}
+var rlT=0;
+async function ensureRefLink(){
+  var u=me(),c=storedRef();if(!u||!c||Date.now()-rlT<8000)return;rlT=Date.now();
+  try{var ex=await gGet("refLinks",u.uid);if(ex){rlT=Date.now()+864e5;return}
+    var ref=await gGet("refCodes",c);if(!ref||ref.uid===u.uid)return;
+    await gSet("refLinks",u.uid,{referrerUid:ref.uid,referrerName:ref.name||"",code:c,buyerName:u.name,createdAt:Date.now()});rlT=Date.now()+864e5;
+  }catch(e){console.warn("reflink",e)}
 }
 async function shareLink(orgId,orgName){
   var code=await myCode(true),link=refLink(code,"/businesses/"+orgId),text="Смотрите «"+orgName+"» в QALA PVL: "+link;
@@ -1605,7 +1613,7 @@ var PF={
 };
 
 /* ===== ЭТАП 2: программа лояльности и касса ===== */
-var RDEF={discountPct:0,earnPct:3,maxSpendPct:20,minPurchase:0,expiryDays:0,active:true};
+var RDEF={discountPct:0,earnPct:3,refPct:1,maxSpendPct:20,minPurchase:0,expiryDays:0,active:true};
 async function getRules(orgId){var r=null;try{r=await gGet("loyaltyRules",orgId)}catch(e){}return Object.assign({},RDEF,r||{})}
 function rulesText(R){var a=[];if(R.discountPct>0)a.push("скидка "+R.discountPct+"%");if(R.earnPct>0)a.push("начисление "+R.earnPct+"%");if(R.maxSpendPct>0)a.push("списание до "+R.maxSpendPct+"%");if(R.minPurchase>0)a.push("от "+money(R.minPurchase));if(R.expiryDays>0)a.push("баллы "+R.expiryDays+" дн.");return a.join(" · ")||"условия не заданы"}
 async function clientCredits(org,u,uid){
@@ -1641,6 +1649,8 @@ VIEWS["/points/rules"]=async function(){
   '<label class="qm-f">Максимум оплаты баллами, % (0–100)<input name="maxSpendPct" type="number" min="0" max="100" value="'+R.maxSpendPct+'" required></label>'+
   '<label class="qm-f">Минимальная сумма покупки, ₸<input name="minPurchase" type="number" min="0" value="'+R.minPurchase+'" required></label>'+
   '<label class="qm-f">Срок жизни баллов, дней (0 — без срока)<input name="expiryDays" type="number" min="0" max="3650" value="'+R.expiryDays+'" required></label>'+
+  '<label class="qm-f">Бонус пригласившему клиента, % от заказа (0–5)<input name="refPct" type="number" min="0" max="5" value="'+(R.refPct==null?1:R.refPct)+'" required></label>'+
+  '<label class="qm-f">Доставка заказов<select name="delivery"><option value="pickup"'+((R.delivery||"pickup")==="pickup"?" selected":"")+'>Только самовывоз</option><option value="courier"'+(R.delivery==="courier"?" selected":"")+'>Только курьер</option><option value="both"'+(R.delivery==="both"?" selected":"")+'>Самовывоз и курьер</option></select></label>'+
   '<label class="qm-chk"><input type="checkbox" name="active"'+(R.active?" checked":"")+'> Программа включена</label>'+
   '<div class="qm-muted" style="margin:8px 0">Пример: покупка 10 000 ₸ → скидка '+R.discountPct+'%, клиенту начислится '+pts(calcSale(10000,R,0,0).earn)+'.</div>'+
   '<button class="btn btn-primary" type="submit">Сохранить</button></form>';
@@ -1673,7 +1683,7 @@ ACT.txVoid=async function(id){
 };
 PF.doneCode=async function(fd,f,u){var c=up(fd.get("code"));if(c.length!==8)throw new Error("Код — 8 символов");await completeOrder(String(fd.get("id")),c);return "Заказ завершён. Комиссия начислена"};
 PF.rules=async function(fd,f,u){var o=await ownOrg(fd,u);function n(k,a,b){var v=Math.round(Number(fd.get(k)));if(!(v>=a&&v<=b))throw new Error("Поле «"+k+"»: от "+a+" до "+b);return v}
-  var d={orgId:o.id,ownerId:u.uid,discountPct:n("discountPct",0,50),earnPct:n("earnPct",0,30),maxSpendPct:n("maxSpendPct",0,100),minPurchase:n("minPurchase",0,100000000),expiryDays:n("expiryDays",0,3650),active:!!fd.get("active"),updatedAt:Date.now()};
+  var d={orgId:o.id,ownerId:u.uid,discountPct:n("discountPct",0,50),earnPct:n("earnPct",0,30),refPct:n("refPct",0,5),maxSpendPct:n("maxSpendPct",0,100),minPurchase:n("minPurchase",0,100000000),expiryDays:n("expiryDays",0,3650),delivery:(["pickup","courier","both"].indexOf(String(fd.get("delivery")))>=0?String(fd.get("delivery")):"pickup"),active:!!fd.get("active"),updatedAt:Date.now()};
   await commit([{t:"set",n:"loyaltyRules",id:o.id,data:d},audit(o.id,u,"rules",o.id,{rules:rulesText(d)})]);return "Программа сохранена"};
 PF.sale=async function(fd,f,u){
   var o=await ownOrg(fd,u),ref=await refUser(fd.get("code"),u),op=String(fd.get("op")||"");if(op.length<8)throw new Error("Обновите страницу");
@@ -1909,9 +1919,11 @@ VIEWS["/business/partners"]=async function(){
   h+='<div class="qm-card"><b>Как это работает</b><p class="qm-muted" style="margin:6px 0 0">Партнёры принимают баллы друг друга. Клиент, заработавший баллы в «'+esc(org.name)+'», сможет потратить их у партнёра, и наоборот. Заявку должен принять партнёр, затем её одобряет администратор QALA.</p></div>';
   var inc=mine.filter(function(p){return p.toOrgId===org.id&&p.status==="invited"});
   if(inc.length){h+='<div class="qm-card" style="margin-top:10px;border-color:#f2a516"><b>Новые заявки на сотрудничество</b>';inc.forEach(function(p){h+='<div class="qm-rev"><div class="qm-row qm-between"><span><b>'+esc(p.fromName)+'</b> хочет стать партнёром «'+esc(p.toName)+'»</span><span class="qm-muted">'+dt(p.createdAt)+'</span></div><div class="qm-row" style="margin-top:6px"><button class="btn btn-primary btn-sm" data-act="pAccept" data-id="'+esc(p.id)+'">Принять</button><button class="btn btn-secondary btn-sm" data-act="pDecline" data-id="'+esc(p.id)+'">Отказать</button></div></div>'});h+='</div>'}
-  var busy={};mine.forEach(function(p){if(p.status==="invited"||p.status==="review"||p.status==="approved"){busy[p.fromOrgId===org.id?p.toOrgId:p.fromOrgId]=1}});
-  var orgs=[];try{orgs=(await gQuery("organizations",[["status","==","approved"]])).filter(function(o){return o.id!==org.id&&!busy[o.id]}).sort(function(a,b){return String(a.name).localeCompare(String(b.name),"ru")})}catch(e){}
-  h+='<form data-pform="pInvite" class="qm-card" style="margin-top:10px"><input type="hidden" name="org" value="'+esc(org.id)+'"><b>Добавить партнёра</b><label class="qm-f" style="margin-top:8px">Организация<select name="to" required><option value="">— выберите —</option>'+orgs.map(function(o){return '<option value="'+esc(o.id)+'">'+esc(o.name)+'</option>'}).join("")+'</select></label><button class="btn btn-primary" type="submit">Отправить заявку</button><div class="qm-muted" style="margin-top:6px">Владелец организации получит оповещение.</div></form>';
+  var rel={};mine.forEach(function(p){var o2=p.fromOrgId===org.id?p.toOrgId:p.fromOrgId;if(p.status==="approved")rel[o2]="approved";else if((p.status==="invited"||p.status==="review")&&rel[o2]!=="approved")rel[o2]=p.status==="invited"&&p.toOrgId===org.id?"incoming":"pending"});
+  var orgs=[];try{orgs=(await gQuery("organizations",[["status","==","approved"]])).filter(function(o){return o.id!==org.id}).sort(function(a,b){return String(a.name).localeCompare(String(b.name),"ru")})}catch(e){}
+  h+='<div class="qm-card" style="margin-top:10px"><b>Выберите организацию для сотрудничества ('+orgs.length+')</b><input type="search" id="qm-psearch" placeholder="Поиск по названию" style="width:100%;margin:8px 0;padding:10px 12px;border:1px solid #cfd8e3;border-radius:10px;font-size:16px" autocomplete="off"><div id="qm-plist">'+
+    (orgs.length?orgs.map(function(o){var r=rel[o.id],btn=r==="approved"?'<span class="qm-st ok">Партнёр</span>':r==="pending"?'<span class="qm-st warn">Заявка отправлена</span>':r==="incoming"?'<span class="qm-st warn">Ждёт вашего ответа выше</span>':'<button class="btn btn-primary btn-sm" data-act="pInviteTo" data-id="'+esc(org.id+"|"+o.id)+'">Предложить</button>';
+      return '<div class="qm-rev qm-row qm-between" data-pn="'+esc(String(o.name||"").toLowerCase())+'" style="gap:8px"><span style="min-width:0"><b>'+esc(o.name)+'</b>'+(o.address?'<div class="qm-muted" style="font-size:12px">'+esc(o.address)+'</div>':'')+'</span>'+btn+'</div>'}).join(""):'<p class="qm-muted">Пока нет других организаций.</p>')+'</div><div class="qm-muted" style="margin-top:6px">Владелец выбранной организации получит оповещение.</div></div>';
   var act=mine.filter(function(p){return p.status==="approved"});
   h+='<div class="qm-card" style="margin-top:10px"><b>Партнёры ('+act.length+')</b>'+(act.length?'':'<p class="qm-muted">Пока нет. Баллы тратятся только там, где заработаны.</p>');
   act.forEach(function(p){var other=p.fromOrgId===org.id?p.toName:p.fromName;h+='<div class="qm-rev qm-row qm-between"><span>🤝 '+esc(other)+'</span><button class="btn btn-ghost btn-sm" data-act="pEnd" data-id="'+esc(p.id)+'">Завершить</button></div>'});h+='</div>';
@@ -1921,15 +1933,17 @@ VIEWS["/business/partners"]=async function(){
   if(old.length){h+='<div class="qm-card" style="margin-top:10px"><b>Архив</b>';old.forEach(function(p){var other=p.fromOrgId===org.id?p.toName:p.fromName;h+='<div class="qm-rev qm-row qm-between"><span>'+esc(other)+'</span><span class="qm-muted">'+esc(PSTL[p.status])+'</span></div>'});h+='</div>'}
   return h;
 };
-PF.pInvite=async function(fd,f,u){
-  var o=await ownOrg(fd,u),toId=String(fd.get("to")||"");if(!toId)throw new Error("Выберите организацию");
+async function inviteOrg(o,toId,u){if(!toId)throw new Error("Выберите организацию");
   var t=await gGet("organizations",toId);if(!t||!t.ownerId)throw new Error("Организация не найдена");if(t.id===o.id)throw new Error("Нельзя выбрать себя");
   var id=o.id+"_"+t.id,rev=await gGet("partners",t.id+"_"+o.id),old=await gGet("partners",id);
   if(rev&&["invited","review","approved"].indexOf(rev.status)>=0)throw new Error("Заявка с этой организацией уже есть");
   if(old&&["invited","review","approved"].indexOf(old.status)>=0)throw new Error("Заявка уже отправлена");
   if(old)await gPatch("partners",id,{status:"invited",updatedAt:Date.now(),createdAt:Date.now()});
   else await gSet("partners",id,{fromOrgId:o.id,fromName:o.name,fromOwner:u.uid,toOrgId:t.id,toName:t.name,toOwner:t.ownerId,status:"invited",createdAt:Date.now(),updatedAt:Date.now()});
-  return "Заявка отправлена владельцу «"+t.name+"»"};
+  return "Заявка отправлена владельцу «"+t.name+"»"}
+PF.pInvite=async function(fd,f,u){return inviteOrg(await ownOrg(fd,u),String(fd.get("to")||""),u)};
+ACT.pInviteTo=async function(id){var u=me(),pr=String(id).split("|"),o=(await gGet("organizations",pr[0]))||null;if(!u||!o||o.ownerId!==u.uid)throw new Error("Это не ваша организация");toast(await inviteOrg(o,pr[1],u))};
+document.addEventListener("input",function(e){var t=e.target;if(!t||t.id!=="qm-psearch")return;var v=t.value.trim().toLowerCase();Array.prototype.forEach.call(document.querySelectorAll("#qm-plist [data-pn]"),function(r){r.style.display=!v||r.getAttribute("data-pn").indexOf(v)>=0?"":"none"})});
 ACT.pAccept=async function(id){await gPatch("partners",id,{status:"review",updatedAt:Date.now()});toast("Принято. Теперь заявку рассмотрит администратор")};
 ACT.pDecline=async function(id){if(!confirm("Отказать в сотрудничестве?"))return;await gPatch("partners",id,{status:"declined",updatedAt:Date.now()});toast("Отказано")};
 ACT.pEnd=async function(id){if(!confirm("Завершить или отозвать сотрудничество? Баллы перестанут приниматься друг у друга."))return;await gPatch("partners",id,{status:"ended",updatedAt:Date.now()});toast("Готово")};
@@ -2002,7 +2016,7 @@ VIEWS["/cart"]=async function(){
   ids.forEach(function(id){var o=ORGC[id],items=g[id],sub=Math.round(items.reduce(function(s,i){return s+i.price*i.qty},0));total+=sub;var lk=waLink(o,items);if(lk)sendable++;
     h+='<div class="qm-card" style="margin-top:10px"><div class="qm-row qm-between"><a href="#/businesses/'+esc(id)+'"><b>'+esc(o.name)+'</b></a><b>'+money(sub)+'</b></div>';
     items.forEach(function(i){h+='<div class="qm-rev" style="display:flex;gap:10px;align-items:center">'+(i.img?'<img src="'+esc(i.img)+'" alt="" style="width:52px;height:52px;object-fit:cover;border-radius:10px">':'')+'<div style="flex:1;min-width:0"><a href="#/products/'+esc(i.id)+'">'+esc(i.title)+'</a><div class="qm-muted">'+money(i.price)+esc(i.unit)+'</div>'+((i.sizes&&i.sizes.length)?'<select class="input" data-size="'+esc(i.id)+'" style="margin-top:4px;padding:4px 8px;width:auto"><option value="">Размер: выберите</option>'+i.sizes.map(function(z){return '<option'+(i.size===z?" selected":"")+'>'+esc(z)+'</option>'}).join("")+'</select>':"")+'</div><div class="qm-row" style="gap:4px"><button class="btn btn-secondary btn-sm" data-act="cartDec" data-id="'+esc(i.id)+'">−</button><input type="number" inputmode="numeric" class="input" data-qty="'+esc(i.id)+'" min="0" max="1000000" step="1" value="'+i.qty+'" style="width:84px;text-align:center;padding:6px 4px"><button class="btn btn-secondary btn-sm" data-act="cartInc" data-id="'+esc(i.id)+'">+</button><button class="btn btn-ghost btn-sm" data-act="cartDel" data-id="'+esc(i.id)+'" aria-label="Удалить">✕</button></div></div>'});
-    h+=lk?'<a class="btn btn-primary" data-cartsend="'+esc(id)+'" target="_blank" rel="noopener" href="'+esc(lk)+'" style="margin-top:8px">'+(SENT[id]===sig(items)?"✓ Отправлено · отправить снова":"Отправить заявку в WhatsApp")+'</a>':'<div class="qm-muted" style="margin-top:8px">У организации не указан телефон'+(o.phone?"":"")+'. Свяжитесь через её страницу.</div>';
+    h+='<a class="btn btn-primary" href="#/checkout?o='+esc(id)+'" style="margin-top:8px;display:block;text-align:center">Оформить заказ</a>';h+=lk?'<a class="btn btn-secondary" data-cartsend="'+esc(id)+'" target="_blank" rel="noopener" href="'+esc(lk)+'" style="margin-top:8px">'+(SENT[id]===sig(items)?"✓ Отправлено · отправить снова":"Отправить заявку в WhatsApp")+'</a>':'<div class="qm-muted" style="margin-top:8px">У организации не указан телефон'+(o.phone?"":"")+'. Свяжитесь через её страницу.</div>';
     h+='</div>'});
   h+='<div class="qm-card" style="margin-top:10px"><div class="qm-row qm-between" style="font-size:18px"><span>Всего ('+ids.length+' '+(ids.length===1?"продавец":"продавцов")+')</span><b>'+money(total)+'</b></div>'+(sendable>1?(left.length?'<button class="btn btn-primary" data-cartall="1" style="margin-top:8px;width:100%">Отправить всем'+(left.length<sendable?' · осталось '+left.length+' (далее: '+esc(ORGC[left[0]].name)+')':' ('+left.length+')')+'</button><div class="qm-muted" style="margin-top:4px">WhatsApp откроется для каждого продавца по очереди: вернитесь сюда и нажмите ещё раз.</div>':'<div class="qm-muted" style="margin-top:8px">✓ Заявки отправлены всем продавцам</div>'):'')+'<button class="btn btn-ghost btn-sm" data-act="cartClear" style="margin-top:6px">Очистить корзину</button></div>';
   return h;
@@ -2023,8 +2037,169 @@ document.addEventListener("click",function(e){var t=e.target.closest&&e.target.c
   setTimeout(function(){busy=0;cur="";sched()},400)},true);
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&path()==="/cart"){busy=0;cur="";sched()}});
 document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("[data-cartsend]");if(a&&noSize(cartGroups()[a.getAttribute("data-cartsend")]||[])){e.preventDefault();e.stopPropagation();toast("Выберите размер у товаров",1);return}if(a){var id=a.getAttribute("data-cartsend");SENT[id]=sig(cartGroups()[id]||[]);sentSave();setTimeout(function(){a.textContent="✓ Отправлено · отправить снова"},200)}});
-function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 07.11 21:48";f.appendChild(d)}
+function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 08.11 07:56";f.appendChild(d)}
 function enhCartIcon(){enhStamp();var ta=document.querySelector(".top-actions");if(!ta)return;var b=ta.querySelector("[data-qmcart]");if(!b){b=document.createElement("a");b.dataset.qmcart=1;b.className="icon-btn";b.href="#/cart";b.title="Корзина";b.setAttribute("aria-label","Корзина");b.style.fontSize="20px";b.textContent="🛒";b.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();location.hash="#/cart";busy=0;cur="";sched()});var q=ta.querySelector("[data-qmtq]");if(q)ta.insertBefore(b,q);else ta.appendChild(b)}updCartBadge()}
+
+/* ===== ЗАКАЗЫ МАГАЗИНА: оформление, статусы, выдача по QR, комиссия ===== */
+var SOST={new:["Новый","warn"],accepted:["Принят","ok"],ready:["Собран","ok"],shipping:["У курьера","ok"],done:["Выдан","ok"],cancelled:["Отменён","bad"],refunded:["Возврат","bad"]};
+function soBadge(s){var m=SOST[s]||[s,""];return '<span class="qm-st '+m[1]+'">'+m[0]+'</span>'}
+function soLines(o){return (o.items||[]).map(function(i){return '<div class="qm-muted">'+esc(i.title)+(i.size?' ('+esc(i.size)+')':'')+' — '+i.qty+esc((i.unit||" шт").replace(/^\s*\/\s*/," "))+' × '+money(i.price)+'</div>'}).join("")}
+function soTotal(items){return Math.round((items||[]).reduce(function(s,i){return s+i.price*i.qty},0))}
+function soWa(o){var ph=String(o.orgPhone||"").replace(/\D/g,"");if(!ph)return "";var t="Заказ № "+o.num+" из QALA PVL\n"+(o.items||[]).map(function(i,k){return (k+1)+". "+i.title+(i.size?" (размер "+i.size+")":"")+" — "+i.qty+" × "+money(i.price)}).join("\n")+"\nИтого: "+money(o.sum)+"\n"+(o.delivery==="courier"?"Доставка: "+(o.address||""):"Самовывоз")+"\nТелефон: "+(o.phone||"")+"\nПроверьте заказ в приложении: раздел бизнеса → Заказы";return "https://wa.me/"+ph+"?text="+encodeURIComponent(t)}
+async function feePct(orgId){var r=null;try{r=await gGet("orgFees",orgId)}catch(e){}return r&&typeof r.pct==="number"?r.pct:3}
+function soNew(){return Math.round((Date.now()%900000)/10)+1000}
+VIEWS["/checkout"]=async function(){
+  var u=me();if(!u)return head("Оформление заказа","/cart")+needLogin();
+  var oid=qs().get("o"),items=cartGroups()[oid];
+  if(!items||!items.length)return head("Оформление заказа","/cart")+'<div class="qm-card">В корзине нет товаров этого продавца.<br><a href="#/cart">В корзину</a></div>';
+  if(noSize(items))return head("Оформление заказа","/cart")+'<div class="qm-card">Выберите размер у товаров в корзине.<br><a class="btn btn-primary" href="#/cart">В корзину</a></div>';
+  var o=await orgInfo(oid),R=await getRules(oid),dm=R.delivery||"pickup",sum=soTotal(items);
+  var h=head("Оформление заказа","/cart")+'<form data-pform="checkout" class="qm-card"><input type="hidden" name="org" value="'+esc(oid)+'"><b>'+esc(o.name)+'</b>';
+  items.forEach(function(i){h+='<div class="qm-row qm-between" style="margin-top:4px"><span>'+esc(i.title)+(i.size?' ('+esc(i.size)+')':'')+' × '+i.qty+'</span><b>'+money(Math.round(i.price*i.qty))+'</b></div>'});
+  h+='<div class="qm-row qm-between" style="font-size:18px;margin-top:8px"><span>Итого</span><b>'+money(sum)+'</b></div>';
+  h+='<div style="margin:10px 0 4px"><b>Получение</b></div>';
+  if(dm!=="courier")h+='<label class="qm-chk"><input type="radio" name="delivery" value="pickup" checked> Самовывоз</label>';
+  if(dm==="courier"||dm==="both")h+='<label class="qm-chk"><input type="radio" name="delivery" value="courier"'+(dm==="courier"?" checked":"")+'> Курьер (адрес ниже)</label>';
+  h+='<label class="qm-f">Ваш телефон<input name="phone" type="tel" required placeholder="+7 ___ ___ __ __" value="'+esc(u.phone||"")+'"></label><label class="qm-f">Адрес доставки (если курьер)<input name="address" placeholder="Улица, дом, квартира"></label><label class="qm-f">Комментарий<input name="note" maxlength="200"></label>';
+  h+='<div class="qm-muted" style="margin:6px 0">Оплата — напрямую продавцу (приложение деньги не принимает). Отменить можно до статуса «Собран». Баллы начислятся при выдаче по вашему QR.</div><button class="btn btn-primary" type="submit" style="width:100%">Оформить заказ</button></form>';
+  return h};
+PF.checkout=async function(fd,f,u){
+  var oid=String(fd.get("org")),items=cartGroups()[oid]||[];if(!items.length)throw new Error("Корзина пуста");if(noSize(items))throw new Error("Выберите размер");
+  var o=await orgInfo(oid);if(!o.ownerId)throw new Error("Организация не найдена");if(o.ownerId===u.uid)throw new Error("Нельзя заказывать у своей организации");
+  var R=await getRules(oid),dm=R.delivery||"pickup",del=String(fd.get("delivery")||"pickup");if(del==="courier"&&dm==="pickup")del="pickup";
+  var ph=String(fd.get("phone")||"").trim();if(ph.replace(/\D/g,"").length<10)throw new Error("Укажите телефон");
+  var ad=String(fd.get("address")||"").trim();if(del==="courier"&&ad.length<5)throw new Error("Укажите адрес доставки");
+  var id=nid(),its=items.map(function(i){return {id:i.id,title:i.title,price:i.price,qty:Math.round(i.qty),unit:i.unit||"",size:i.size||""}});
+  var d={orgId:oid,orgName:o.name,orgPhone:o.whatsapp||o.phone||"",ownerId:o.ownerId,buyerId:u.uid,buyerName:u.name,phone:ph,delivery:del,address:del==="courier"?ad:"",note:String(fd.get("note")||"").slice(0,200),items:its,sum:soTotal(its),num:soNew(),status:"new",createdAt:Date.now(),updatedAt:Date.now()};
+  await gSet("sorders",id,d);
+  var rest=cartGet().filter(function(i){return i.orgId!==oid});cartSave(rest);delete SENT[oid];sentSave();
+  location.hash="#/shop-orders?new="+id;return "Заказ № "+d.num+" оформлен"};
+VIEWS["/shop-orders"]=async function(){
+  var u=me();if(!u)return head("Мои заказы","/")+needLogin();
+  var os=(await gQuery("sorders",[["buyerId","==",u.uid]])).sort(function(a,b){return b.createdAt-a.createdAt}),nw=qs().get("new"),code="";
+  try{code=await myCode(true)}catch(e){}
+  var h=head("Мои заказы","/cart");
+  if(!os.length)return h+'<div class="qm-card">Заказов пока нет.<br><a href="#/products">К товарам</a></div>';
+  os.forEach(function(o){var qr=(code&&(o.status==="accepted"||o.status==="ready"||o.status==="shipping"));var wa=o.status==="new"?soWa(o):"";
+    h+='<div class="qm-card" style="margin-top:10px'+(o.id===nw?';border-color:#12805c':'')+'"><div class="qm-row qm-between"><b>Заказ № '+o.num+' · '+esc(o.orgName)+'</b>'+soBadge(o.status)+'</div><div class="qm-muted">'+dt(o.createdAt)+' · '+(o.delivery==="courier"?'Доставка: '+esc(o.address):'Самовывоз')+'</div>'+soLines(o)+'<div class="qm-row qm-between" style="margin-top:6px"><span>Итого</span><b>'+money(o.sum)+'</b></div>';
+    if(o.courierName&&o.status!=="done")h+='<div class="qm-muted">Курьер: '+esc(o.courierName)+'</div>';
+    if(o.status==="done"&&o.earn)h+='<div style="color:#12805c">Начислено: +'+pts(o.earn)+'</div>';
+    if(wa)h+='<a class="btn btn-secondary btn-sm" target="_blank" rel="noopener" href="'+esc(wa)+'" style="margin-top:8px">Уведомить продавца в WhatsApp</a>';
+    if(o.status==="new")h+='<div class="qm-muted" style="margin-top:4px">Ждём, пока продавец примет заказ.</div>';
+    if(qr)h+='<div style="margin-top:8px;text-align:center"><div class="qm-muted">Покажите этот QR при получении</div><div data-act="qrBig" data-id="'+esc(code)+'" style="margin:6px auto;width:180px;cursor:zoom-in">'+qrSvg(qrPayload(code),180)+'</div><b style="letter-spacing:3px">'+esc(code)+'</b></div>';
+    if(o.status==="new"||o.status==="accepted")h+='<button class="btn btn-ghost btn-sm" data-act="soCancel" data-id="'+o.id+'" style="margin-top:6px">Отменить заказ</button>';
+    if(o.status==="ready"||o.status==="shipping")h+='<div class="qm-muted" style="margin-top:6px">Заказ собран, отмена недоступна. Возврат — только по QR у продавца.</div>';
+    h+='</div>'});
+  return h};
+ACT.soCancel=async function(id){var u=me(),o=await gGet("sorders",id);if(!o)return;if(!confirm("Отменить заказ № "+o.num+"?"))return;
+  if(o.status!=="new"&&o.status!=="accepted")throw new Error("Заказ уже собран, отмена недоступна");
+  await gPatch("sorders",id,{status:"cancelled",cancelBy:u.uid,updatedAt:Date.now()});toast("Заказ отменён")};
+/* --- продавец --- */
+async function soOrg(u){var P=await pickOrg(u);return P}
+function boTabs(org,orgs,t){var n=SON;return (orgs.length>1?'<div class="qm-tabs">'+orgs.map(function(o){return '<a href="#/business/orders?o='+esc(o.id)+'&t='+t+'"'+(o.id===org.id?' class="on"':'')+'>'+esc(o.name)+'</a>'}).join("")+'</div>':'')+'<div class="qm-tabs">'+[["act","В работе"+(n?" ("+n+")":"")],["done","Выданные"],["old","Отменённые"],["cur","Курьеры"],["fee","Комиссия"]].map(function(x){return '<a href="#/business/orders?o='+esc(org.id)+'&t='+x[0]+'"'+(x[0]===t?' class="on"':'')+'>'+x[1]+'</a>'}).join("")+'</div>'}
+async function soSettle(o,u,org){ /* начисление баллов и комиссии после выдачи; безопасно вызывать повторно */
+  if(o.settled||o.status!=="done")return;
+  var R=await getRules(org.id),pct=await feePct(org.id),earn=(R.active&&o.sum>=(R.minPurchase||0))?Math.floor(o.sum*R.earnPct/100):0,fee=Math.round(o.sum*pct/100),now=Date.now(),ops=[],eid="so"+o.id+"e";
+  if(earn>0)ops.push({t:"set",n:"credits",id:eid,data:{orgId:org.id,orgName:org.name,ownerId:u.uid,userId:o.buyerId,userName:o.buyerName,code:o.buyerCode||"",kind:"client",saleSum:o.sum,pct:R.earnPct,points:earn,note:"заказ № "+o.num,spent:0,status:"active",createdAt:now,expiresAt:R.expiryDays>0?now+R.expiryDays*864e5:0}});
+  var rl=null,rp=0,rid="";try{rl=await gGet("refLinks",o.buyerId)}catch(e){}
+  if(rl&&rl.referrerUid&&rl.referrerUid!==u.uid&&R.active&&(R.refPct||0)>0){rp=Math.floor(o.sum*R.refPct/100);if(rp>0){rid="so"+o.id+"r";ops.push({t:"set",n:"credits",id:rid,data:{orgId:org.id,orgName:org.name,ownerId:u.uid,userId:rl.referrerUid,userName:rl.referrerName||"",buyerId:o.buyerId,orderId:o.id,kind:"referral",saleSum:o.sum,pct:R.refPct,points:rp,note:"бонус за приглашённого клиента (заказ № "+o.num+")",spent:0,status:"active",createdAt:now,expiresAt:R.expiryDays>0?now+R.expiryDays*864e5:0}})}}
+  ops.push({t:"set",n:"shopFees",id:o.id,data:{orgId:org.id,orgName:org.name,ownerId:u.uid,orderId:o.id,num:o.num,sum:o.sum,pct:pct,fee:fee,paid:false,status:"due",createdAt:now}});
+  ops.push({t:"patch",n:"sorders",id:o.id,p:{settled:true,earn:earn,earnId:earn>0?eid:"",refId:rid,refPoints:rp,fee:fee,feePct:pct,updatedAt:now}});
+  for(var i=0;i<(o.items||[]).length;i++){var it=o.items[i];if(!it.size)continue;var p=await gGet("products",it.id);if(p&&p.sizes&&p.orgId===org.id){var s=Object.assign({},p.sizes);s[it.size]=Math.max(0,(Number(s[it.size])||0)-it.qty);ops.push({t:"patch",n:"products",id:p.id||it.id,p:{sizes:s}})}}
+  ops.push(audit(org.id,u,"shopSettle",o.id,{sum:o.sum,fee:fee}));
+  await commit(ops)}
+VIEWS["/business/orders"]=async function(){
+  var u=me();if(!u)return head("Заказы","/profile")+needLogin();
+  var P=await soOrg(u);if(!P.org)return head("Заказы","/profile")+'<div class="qm-card">У вас пока нет организации.</div>';
+  var org=P.org,t=qs().get("t")||"act",R=await getRules(org.id);
+  var all=(await gQuery("sorders",[["ownerId","==",u.uid]])).filter(function(o){return o.orgId===org.id}).sort(function(a,b){return b.createdAt-a.createdAt});
+  for(var k=0;k<all.length;k++)if(all[k].status==="done"&&!all[k].settled){try{await soSettle(all[k],u,org);all[k]=await gGet("sorders",all[k].id)}catch(e){console.warn(e)}}
+  SON=all.filter(function(o){return o.status==="new"}).length;
+  var h=head("Заказы магазина","/profile")+boTabs(P.org,P.orgs,t);
+  if(t==="cur"){
+    var cs=(await gQuery("couriers",[["ownerId","==",u.uid]])).filter(function(c){return c.orgId===org.id});
+    h+='<div class="qm-card"><b>Курьеры</b>'+(cs.length?cs.map(function(c){return '<div class="qm-rev qm-row qm-between"><span>'+esc(c.name)+'</span><button class="btn btn-ghost btn-sm" data-act="coDel" data-id="'+esc(c.id)+'">Убрать</button></div>'}).join(""):'<div class="qm-muted">Курьеров нет</div>')+'<form data-pform="courierAdd" style="margin-top:8px"><input type="hidden" name="org" value="'+esc(org.id)+'"><label class="qm-f">QALA-код курьера (из раздела «Баллы»)<input name="code" maxlength="8" required></label><button class="btn btn-primary btn-sm" type="submit">Добавить курьера</button></form></div><div class="qm-muted" style="margin-top:8px">Курьер входит в свой аккаунт и видит назначенные ему заказы в разделе «Курьер» (#/courier).</div>';
+    return h}
+  if(t==="fee"){
+    var fs=(await gQuery("shopFees",[["ownerId","==",u.uid]])).filter(function(f){return f.orgId===org.id&&f.status!=="void"}).sort(function(a,b){return b.createdAt-a.createdAt}),pct=await feePct(org.id),due=fs.filter(function(f){return !f.paid}).reduce(function(s,f){return s+f.fee},0);
+    h+='<div class="qm-card"><div class="qm-muted">Ваш процент комиссии</div><b style="font-size:20px">'+pct+'%</b> <span class="qm-muted">от суммы выданного заказа (устанавливает администратор)</span><div class="qm-muted" style="margin-top:8px">К оплате</div><div class="qm-price">'+money(due)+'</div><div class="qm-muted" style="margin-top:6px">'+esc(PAY_TEXT)+'</div></div>';
+    h+=fs.length?fs.map(function(f){return '<div class="qm-card qm-row qm-between" style="margin-top:8px"><span>Заказ № '+f.num+' · '+money(f.sum)+' × '+f.pct+'%<div class="qm-muted">'+dt(f.createdAt)+'</div></span><span><b>'+money(f.fee)+'</b><br><span class="qm-st '+(f.paid?"ok":"warn")+'">'+(f.paid?"Оплачено":"К оплате")+'</span></span></div>'}).join(""):'<div class="qm-card qm-muted" style="margin-top:8px">Комиссий пока нет</div>';
+    return h}
+  var f2=t==="act"?function(o){return ["new","accepted","ready","shipping"].indexOf(o.status)>=0}:t==="done"?function(o){return o.status==="done"||o.status==="refunded"}:function(o){return o.status==="cancelled"};
+  var L=all.filter(f2);
+  if(t==="act")h+='<div class="qm-muted" style="margin:6px 0">Доставка: '+({pickup:"только самовывоз",courier:"только курьер",both:"самовывоз и курьер"}[R.delivery||"pickup"])+' (меняется в «Программе»)</div>';
+  if(!L.length)return h+'<div class="qm-card qm-muted">Заказов нет</div>';
+  var cs2=t==="act"?(await gQuery("couriers",[["ownerId","==",u.uid]])).filter(function(c){return c.orgId===org.id}):[];
+  L.forEach(function(o){
+    h+='<div class="qm-card" style="margin-top:10px"><div class="qm-row qm-between"><b>№ '+o.num+' · '+esc(o.buyerName||"")+'</b>'+soBadge(o.status)+'</div><div class="qm-muted">'+dt(o.createdAt)+' · <a href="tel:'+esc(o.phone)+'">'+esc(o.phone)+'</a> · '+(o.delivery==="courier"?'Доставка: '+esc(o.address):'Самовывоз')+'</div>'+(o.note?'<div>Комментарий: '+esc(o.note)+'</div>':'')+soLines(o)+'<div class="qm-row qm-between" style="margin-top:6px"><span>Итого</span><b>'+money(o.sum)+'</b></div>';
+    if(o.status==="done")h+='<div class="qm-muted">Клиенту +'+pts(o.earn||0)+(o.refPoints?' · пригласившему +'+pts(o.refPoints):'')+' · комиссия '+money(o.fee||0)+' ('+(o.feePct||0)+'%)</div>';
+    var b='';
+    if(o.status==="new")b+='<button class="btn btn-primary btn-sm" data-act="soAccept" data-id="'+o.id+'">Принять</button>';
+    if(o.status==="accepted")b+='<button class="btn btn-primary btn-sm" data-act="soReady" data-id="'+o.id+'">Собран</button>';
+    if(o.status==="ready"&&o.delivery==="pickup"||o.status==="accepted"&&o.delivery==="pickup")b+='<button class="btn btn-primary btn-sm" data-act="soHand" data-id="'+o.id+'">📷 Выдать по QR</button>';
+    if(o.status==="ready"&&o.delivery==="courier")b+=(cs2.length?'<select class="input" data-socur="'+o.id+'" style="width:auto;padding:4px 8px"><option value="">Передать курьеру…</option>'+cs2.map(function(c){return '<option value="'+esc(c.courierId)+'">'+esc(c.name)+'</option>'}).join("")+'</select>':'<span class="qm-muted">Добавьте курьера во вкладке «Курьеры»</span>');
+    if(o.status==="shipping")b+='<span class="qm-muted">Курьер: '+esc(o.courierName||"")+'</span> <button class="btn btn-secondary btn-sm" data-act="soHand" data-id="'+o.id+'">📷 Выдать по QR</button>';
+    if(o.status==="new"||o.status==="accepted")b+=' <button class="btn btn-ghost btn-sm" data-act="soCancelS" data-id="'+o.id+'">Отменить</button>';
+    if(o.status==="done")b+='<button class="btn btn-ghost btn-sm" data-act="soRefund" data-id="'+o.id+'">↩ Возврат по QR</button>';
+    h+='<div class="qm-row" style="margin-top:8px;flex-wrap:wrap;gap:6px">'+b+'</div></div>'});
+  return h};
+var SON=0;
+async function soSet(id,p){await gPatch("sorders",id,Object.assign({updatedAt:Date.now()},p))}
+ACT.soAccept=async function(id){await soSet(id,{status:"accepted"});toast("Заказ принят")};
+ACT.soReady=async function(id){await soSet(id,{status:"ready"});toast("Заказ собран. Отмена теперь недоступна")};
+ACT.soCancelS=async function(id){var o=await gGet("sorders",id);if(!confirm("Отменить заказ № "+o.num+"?"))return;if(o.status!=="new"&&o.status!=="accepted")throw new Error("Заказ уже собран");await soSet(id,{status:"cancelled",cancelBy:me().uid});toast("Заказ отменён")};
+document.addEventListener("change",function(e){var s=e.target;if(!s||!s.getAttribute||!s.getAttribute("data-socur")||!s.value)return;var id=s.getAttribute("data-socur"),cid=s.value,nm=s.options[s.selectedIndex].text;
+  soSet(id,{courierId:cid,courierName:nm}).then(function(){toast("Назначен курьер: "+nm+". Он заберёт заказ в своём кабинете");render(true)},function(er){toast(errText(er),1)})});
+function scanBuyer(o,cb){return openScanner(function(raw){var c=parseScan(raw);if(!c)return false;gGet("refCodes",c).then(function(r){if(!r||r.uid!==o.buyerId){toast("Это QR другого клиента",1);return}cb(c)},function(er){toast(errText(er),1)});return true},"Наведите камеру на QR покупателя (заказ № "+o.num+")")}
+ACT.soHand=async function(id){var u=me(),o=await gGet("sorders",id);if(!o||["ready","shipping","accepted"].indexOf(o.status)<0)throw new Error("Заказ нельзя выдать в статусе «"+o.status+"»");
+  await scanBuyer(o,function(code){soSet(id,{status:"done",doneAt:Date.now(),buyerCode:code}).then(async function(){var org=await gGet("organizations",o.orgId),n=await gGet("sorders",id);await soSettle(n,u,org);toast("Выдано. Клиенту начислено "+pts(n.earn||0)+(n.earn?"":"")+", комиссия записана");render(true)},function(er){toast(errText(er),1)})})};
+ACT.soRefund=async function(id){var u=me(),o=await gGet("sorders",id);if(!o||o.status!=="done")return;
+  await scanBuyer(o,function(code){if(!confirm("Оформить возврат заказа № "+o.num+"? Баллы клиента аннулируются, комиссия отменяется."))return;
+    (async function(){var ops=[],now=Date.now();
+      if(o.earnId){var e=await gGet("credits",o.earnId);if(e&&(e.spent||0)>0)throw new Error("Баллы за этот заказ уже потрачены, возврат невозможен");if(e)ops.push({t:"patch",n:"credits",id:o.earnId,p:{status:"void"}})}
+      if(o.refId){var rc=await gGet("credits",o.refId);if(rc&&(rc.spent||0)>0)throw new Error("Реферальные баллы по этому заказу уже потрачены, возврат невозможен");if(rc)ops.push({t:"patch",n:"credits",id:o.refId,p:{status:"void"}})}
+      var fe=await gGet("shopFees",o.id);if(fe&&!fe.paid)ops.push({t:"patch",n:"shopFees",id:o.id,p:{status:"void",voidedAt:now}});
+      for(var i=0;i<(o.items||[]).length;i++){var it=o.items[i];if(!it.size)continue;var p=await gGet("products",it.id);if(p&&p.sizes&&p.orgId===o.orgId){var s=Object.assign({},p.sizes);s[it.size]=(Number(s[it.size])||0)+it.qty;ops.push({t:"patch",n:"products",id:p.id||it.id,p:{sizes:s}})}}
+      ops.push({t:"patch",n:"sorders",id:id,p:{status:"refunded",refundAt:now,refundBy:u.uid,buyerCode:code,updatedAt:now}});ops.push(audit(o.orgId,u,"shopRefund",id));
+      await commit(ops);toast(fe&&fe.paid?"Возврат оформлен. Комиссия уже оплачена: договоритесь с администратором о зачёте":"Возврат оформлен");render(true)})().catch(function(er){toast(errText(er),1)})})};
+PF.courierAdd=async function(fd,f,u){var o=await ownOrg(fd,u),r=await refUser(fd.get("code"),u);var id=o.id+"_"+r.uid;
+  await commit([{t:"set",n:"couriers",id:id,data:{orgId:o.id,ownerId:u.uid,courierId:r.uid,name:r.name||"Курьер",createdAt:Date.now()}}]);return "Курьер добавлен: "+(r.name||"")};
+ACT.coDel=async function(id){if(!confirm("Убрать курьера?"))return;await gDel("couriers",id)};
+VIEWS["/courier"]=async function(){
+  var u=me();if(!u)return head("Курьер","/")+needLogin();
+  var os=(await gQuery("sorders",[["courierId","==",u.uid]])).sort(function(a,b){return b.createdAt-a.createdAt});
+  var h=head("Кабинет курьера","/");if(!os.length)return h+'<div class="qm-card qm-muted">Вам пока не назначили заказов. Продавец добавляет курьера по вашему QALA-коду (раздел «Баллы»).</div>';
+  os.forEach(function(o){h+='<div class="qm-card" style="margin-top:10px"><div class="qm-row qm-between"><b>№ '+o.num+' · '+esc(o.orgName)+'</b>'+soBadge(o.status)+'</div><div>Клиент: '+esc(o.buyerName||"")+' · <a href="tel:'+esc(o.phone)+'">'+esc(o.phone)+'</a></div><div>Адрес: '+esc(o.address||"")+'</div>'+soLines(o)+'<div class="qm-row qm-between"><span>Сумма</span><b>'+money(o.sum)+'</b></div><div class="qm-muted">Сумму клиент платит продавцу/курьеру напрямую, приложение деньги не принимает.</div>';
+    if(o.status==="ready")h+='<button class="btn btn-primary btn-sm" data-act="coTake" data-id="'+o.id+'" style="margin-top:6px">Забрал у продавца</button>';
+    if(o.status==="shipping")h+='<button class="btn btn-primary btn-sm" data-act="coHand" data-id="'+o.id+'" style="margin-top:6px">📷 Выдать по QR клиента</button>';
+    h+='</div>'});
+  return h};
+ACT.coTake=async function(id){await gPatch("sorders",id,{status:"shipping",updatedAt:Date.now()});toast("Заказ у вас")};
+ACT.coHand=async function(id){var o=await gGet("sorders",id);await scanBuyer(o,function(code){gPatch("sorders",id,{status:"done",doneAt:Date.now(),buyerCode:code,updatedAt:Date.now()}).then(function(){toast("Выдано. Баллы клиенту начислятся, когда продавец откроет заказы");render(true)},function(er){toast(errText(er),1)})})};
+/* --- администратор: процент и оплата --- */
+VIEWS["/admin/shops"]=async function(){
+  var u=me();if(!u||!u.admin)return head("Комиссии магазинов","/admin")+'<div class="qm-card">Только для администратора.</div>';
+  var orgs=await gQuery("organizations",[]),rates=await gQuery("orgFees",[]),fs=await gQuery("shopFees",[]),rm={};rates.forEach(function(r){rm[r.id]=r.pct});
+  var h=head("Комиссии магазинов","/admin")+'<div class="qm-muted" style="margin-bottom:8px">Процент берётся от суммы выданного заказа. По умолчанию 3%.</div>';
+  var due={};fs.forEach(function(f){if(f.status!=="void"&&!f.paid)due[f.orgId]=(due[f.orgId]||0)+f.fee});
+  var withFees=orgs.filter(function(o){return due[o.id]||fs.some(function(f){return f.orgId===o.id})});
+  h+='<div class="qm-card"><b>Процент для организации</b><form data-pform="orgFee" style="margin-top:8px"><label class="qm-f">Организация<select name="org" required>'+orgs.map(function(o){return '<option value="'+esc(o.id)+'">'+esc(o.name)+' — '+(rm[o.id]!=null?rm[o.id]:3)+'%</option>'}).join("")+'</select></label><label class="qm-f">Процент (0–50)<input name="pct" type="number" min="0" max="50" step="1" required value="3"></label><button class="btn btn-primary btn-sm" type="submit">Сохранить</button></form></div>';
+  h+='<div class="qm-card" style="margin-top:10px"><b>Неоплаченные комиссии</b>';
+  var un=fs.filter(function(f){return f.status!=="void"&&!f.paid}).sort(function(a,b){return b.createdAt-a.createdAt});
+  h+=un.length?un.map(function(f){return '<div class="qm-rev qm-row qm-between"><span>'+esc(f.orgName)+' · заказ № '+f.num+'<div class="qm-muted">'+money(f.sum)+' × '+f.pct+'% · '+dt(f.createdAt)+'</div></span><span><b>'+money(f.fee)+'</b> <button class="btn btn-secondary btn-sm" data-act="sfPaid" data-id="'+esc(f.id)+'">Оплачено</button></span></div>'}).join(""):'<div class="qm-muted">Нет</div>';
+  h+='</div>';return h};
+PF.orgFee=async function(fd,f,u){if(!u.admin)throw new Error("Нет прав");var p=Math.round(Number(fd.get("pct")));if(!(p>=0&&p<=50))throw new Error("От 0 до 50");await commit([{t:"set",n:"orgFees",id:String(fd.get("org")),data:{pct:p,updatedAt:Date.now(),by:u.uid}}]);return "Процент сохранён"};
+ACT.sfPaid=async function(id){await gPatch("shopFees",id,{paid:true,paidAt:Date.now()});toast("Отмечено оплаченным")};
+var SOPOLL=0;
+async function checkShop(){var u=me();if(!u){SON=0;return}
+  try{var os=(await gQuery("sorders",[["ownerId","==",u.uid]])).filter(function(o){return o.status==="new"});SON=os.length;
+    var seen=[];try{seen=JSON.parse(localStorage.getItem("qm:seenSO")||"[]")}catch(e){}var fr=os.filter(function(o){return seen.indexOf(o.id)<0});
+    if(fr.length&&path()!=="/business/orders"){toast("🛒 Новый заказ № "+fr[0].num+(fr.length>1?" и ещё "+(fr.length-1):"")+". Бизнес → Заказы");try{localStorage.setItem("qm:seenSO",JSON.stringify(seen.concat(fr.map(function(o){return o.id})).slice(-80)))}catch(e){}}
+  }catch(e){SON=0}
+  var a=document.querySelector("[data-qxo]");if(a)a.textContent="Заказы"+(SON?" ("+SON+")":"")}
+function enhShopNav(){if(!SOPOLL){SOPOLL=1;setTimeout(checkShop,1500);setInterval(checkShop,45000)}
+  var sn=document.querySelector(".subnav");if(sn&&path().indexOf("/business")===0&&me()&&!sn.querySelector("[data-qxo]")){var a=document.createElement("a");a.href="#/business/orders";a.dataset.qxo=1;a.textContent="Заказы";if(path()==="/business/orders")a.className="active";sn.appendChild(a)}
+  var ta=document.querySelector(".top-actions");if(ta&&!ta.querySelector("[data-qmso]")&&me()){var b=document.createElement("a");b.className="icon-btn";b.dataset.qmso=1;b.href="#/shop-orders";b.title="Мои заказы";b.setAttribute("aria-label","Мои заказы");b.style.fontSize="20px";b.textContent="📦";var c=ta.querySelector("[data-qmcart]");if(c)ta.insertBefore(b,c);else ta.appendChild(b)}}
 
 /* ===== ФОТО: автообработка с выбором варианта ===== */
 function ppLoad(src){return new Promise(function(res,rej){
@@ -2087,7 +2262,7 @@ function diag(){
 }
 var raf=0;
 function sync(){raf=0;try{ensureManager();render(false).catch(function(e){console.warn(e);showErr(e)})}catch(e){console.warn(e);showErr(e)}
-  [injectNav,function(){drawReviews(false)},injectRatings,enhLogin,enhHours,enhAdminPhoto,revTabSync,enhPartnerNav,enhCart,enhCartIcon].forEach(function(fn){try{var r=fn();if(r&&r.catch)r.catch(function(e){console.warn(e)})}catch(e){console.warn(e)}})}
+  [injectNav,function(){drawReviews(false)},injectRatings,enhLogin,enhHours,enhAdminPhoto,revTabSync,enhPartnerNav,ensureRefLink,enhShopNav,enhCart,enhCartIcon].forEach(function(fn){try{var r=fn();if(r&&r.catch)r.catch(function(e){console.warn(e)})}catch(e){console.warn(e)}})}
 function showErr(e){var m=$("main.page");if(!m||!VIEWS[path()])return;var v=$("#qm-view");if(!v){v=document.createElement("div");v.id="qm-view";v.className="container";m.appendChild(v)}v.innerHTML='<div class="qm-card">Не удалось открыть раздел: '+esc(errText(e))+'</div>'}
 function sched(){if(!raf)raf=requestAnimationFrame(sync)}
 window.addEventListener("hashchange",function(){busy=0;sched()});
