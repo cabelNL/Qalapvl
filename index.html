@@ -1562,7 +1562,11 @@ VIEWS["/points"]=async function(){
   h+='</div>';
   try{var apr=await gQuery("partners",[["status","==","approved"]]),pl2=[];keys.forEach(function(k){var nm=[];apr.forEach(function(p){if(p.fromOrgId===k)nm.push(p.toName);else if(p.toOrgId===k)nm.push(p.fromName)});if(nm.length)pl2.push('<div class="qm-rev">Баллы «'+esc(by[k].name)+'» можно тратить также: <b>'+nm.map(esc).join(", ")+'</b></div>')});if(pl2.length)h+='<div class="qm-card" style="margin-top:10px"><b>Партнёры: где ещё можно тратить</b>'+pl2.join("")+'</div>'}catch(e){}
   if(mg.length)h+='<div class="qm-card" style="margin-top:10px"><b>Вы менеджер организаций: '+mg.length+'</b><p class="qm-muted">Организации, которые пришли по вашей ссылке, могут начислять вам баллы за привлечение.</p></div>';
-  if(cr.length){h+='<div class="qm-card" style="margin-top:10px"><b>История</b>';cr.slice(0,30).forEach(function(c){h+='<div class="qm-rev"><div class="qm-row qm-between"><span>'+esc(c.orgName||"")+(c.kind==="manager"?' <span class="qm-st">менеджер</span>':'')+(c.status==="void"?' <span class="qm-st bad">отменено</span>':'')+'</span><b>+'+pts(c.points)+'</b></div><div class="qm-muted">'+dt(c.createdAt)+(c.saleSum?" · покупка "+money(c.saleSum):"")+(c.spent?" · потрачено "+pts(c.spent):"")+(c.note?" · "+esc(c.note):"")+'</div></div>'});h+='</div>'}
+  var ev=[];cr.forEach(function(c){ev.push({t:c.createdAt,k:"in",org:c.orgName||"",n:c.points,c:c})});
+  try{var lt=await gQuery("ltx",[["userId","==",u.uid]]);for(var li=0;li<lt.length;li++){var x=lt[li];if(!(x.spend>0))continue;var oi=await orgInfo(x.orgId);ev.push({t:x.createdAt,k:"out",org:oi.name||"",n:x.spend,void:x.status==="void",note:x.sum>0?"покупка "+money(x.sum)+", к оплате "+money(x.pay):"списание у продавца"})}}catch(e){}
+  try{var so=await gQuery("sorders",[["buyerId","==",u.uid]]);so.forEach(function(o){var sp=o.status==="done"?(o.spendUsed||0):0;if(o.status==="refunded"&&o.spendUsed)ev.push({t:o.refundAt||o.updatedAt,k:"in",org:o.orgName,n:o.spendUsed,note:"возврат баллов, заказ № "+o.num});if(sp>0||(o.status==="refunded"&&o.spendUsed))ev.push({t:o.doneAt||o.createdAt,k:"out",org:o.orgName,n:o.spendUsed,note:"заказ № "+o.num})})}catch(e){}
+  ev.sort(function(a,b){return (b.t||0)-(a.t||0)});
+  if(ev.length){h+='<div class="qm-card" style="margin-top:10px"><b>История баллов</b>';ev.slice(0,60).forEach(function(e){var c=e.c;h+='<div class="qm-rev"><div class="qm-row qm-between"><span>'+esc(e.org)+(c&&c.kind==="manager"?' <span class="qm-st">менеджер</span>':'')+(c&&c.kind==="referral"?' <span class="qm-st">приглашённый</span>':'')+((c&&c.status==="void")||e.void?' <span class="qm-st bad">отменено</span>':'')+'</span><b style="color:'+(e.k==="out"?"#b42318":"#12805c")+'">'+(e.k==="out"?"−":"+")+pts(e.n)+'</b></div><div class="qm-muted">'+dt(e.t)+(e.k==="out"?" · списание":" · начисление")+(c&&c.saleSum?" · покупка "+money(c.saleSum):"")+(e.note?" · "+esc(e.note):"")+(c&&c.note?" · "+esc(c.note):"")+'</div></div>'});h+='</div>'}
   return h;
 };
 VIEWS["/points/org"]=async function(){
@@ -1604,7 +1608,8 @@ var PF={
     var cs=(await gQuery("credits",[["ownerId","==",u.uid],["userId","==",ref.uid]])).filter(function(c){return c.orgId===o.id&&left(c)>0}).sort(function(a,b){return a.createdAt-b.createdAt});
     var av=cs.reduce(function(s,c){return s+left(c)},0);if(n>av)throw new Error("У клиента только "+pts(av)+" ваших баллов");
     if(!confirm("Списать "+pts(n)+" у пользователя "+ref.name+"? Остаток после списания: "+pts(av-n)))return "";
-    var r=n;for(var i=0;i<cs.length&&r>0;i++){var t=Math.min(r,left(cs[i]));await gPatch("credits",cs[i].id,{spent:(cs[i].spent||0)+t,spentAt:Date.now()});r-=t}
+    var r=n,parts=[];for(var i=0;i<cs.length&&r>0;i++){var t=Math.min(r,left(cs[i]));await gPatch("credits",cs[i].id,{spent:(cs[i].spent||0)+t,spentAt:Date.now()});parts.push({id:cs[i].id,amt:t,org:o.id});r-=t}
+    await gSet("ltx",nid()+"m",{orgId:o.id,ownerId:u.uid,cashierId:u.uid,cashierName:u.name,userId:ref.uid,userName:ref.name,code:up(fd.get("code")),sum:0,disc:0,spend:n,pay:0,earn:0,earnId:"",parts:parts,status:"ok",createdAt:Date.now()});
     return "Списано "+pts(n)},
   async mgr(fd,f,u){var o=await ownOrg(fd,u),mg=await gGet("managers",u.uid);if(!mg)throw new Error("Менеджер не найден");var p=Math.round(Number(fd.get("points")));if(!(p>0))throw new Error("Укажите баллы");
     if(!confirm("Начислить менеджеру "+mg.managerName+" "+pts(p)+"?"))return "";
@@ -2037,15 +2042,28 @@ document.addEventListener("click",function(e){var t=e.target.closest&&e.target.c
   setTimeout(function(){busy=0;cur="";sched()},400)},true);
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&path()==="/cart"){busy=0;cur="";sched()}});
 document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("[data-cartsend]");if(a&&noSize(cartGroups()[a.getAttribute("data-cartsend")]||[])){e.preventDefault();e.stopPropagation();toast("Выберите размер у товаров",1);return}if(a){var id=a.getAttribute("data-cartsend");SENT[id]=sig(cartGroups()[id]||[]);sentSave();setTimeout(function(){a.textContent="✓ Отправлено · отправить снова"},200)}});
-function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 08.11 07:56";f.appendChild(d)}
+function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 08.11 09:05";f.appendChild(d)}
 function enhCartIcon(){enhStamp();var ta=document.querySelector(".top-actions");if(!ta)return;var b=ta.querySelector("[data-qmcart]");if(!b){b=document.createElement("a");b.dataset.qmcart=1;b.className="icon-btn";b.href="#/cart";b.title="Корзина";b.setAttribute("aria-label","Корзина");b.style.fontSize="20px";b.textContent="🛒";b.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();location.hash="#/cart";busy=0;cur="";sched()});var q=ta.querySelector("[data-qmtq]");if(q)ta.insertBefore(b,q);else ta.appendChild(b)}updCartBadge()}
 
 /* ===== ЗАКАЗЫ МАГАЗИНА: оформление, статусы, выдача по QR, комиссия ===== */
 var SOST={new:["Новый","warn"],accepted:["Принят","ok"],ready:["Собран","ok"],shipping:["У курьера","ok"],done:["Выдан","ok"],cancelled:["Отменён","bad"],refunded:["Возврат","bad"]};
 function soBadge(s){var m=SOST[s]||[s,""];return '<span class="qm-st '+m[1]+'">'+m[0]+'</span>'}
 function soLines(o){return (o.items||[]).map(function(i){return '<div class="qm-muted">'+esc(i.title)+(i.size?' ('+esc(i.size)+')':'')+' — '+i.qty+esc((i.unit||" шт").replace(/^\s*\/\s*/," "))+' × '+money(i.price)+'</div>'}).join("")}
+function soBuyerPhone(o){var d=String(o.phone||"").replace(/\D/g,"");if(d.length===10)d="7"+d;if(d.length===11&&d[0]==="8")d="7"+d.slice(1);return d}
+function soTpl(o){var n="№ "+o.num+" ("+o.orgName+")",pay=o.spend?" К оплате: "+money(o.sum-o.spend)+".":" К оплате: "+money(o.sum)+".",c=o.delivery==="courier",L=[];
+  if(o.status==="new")L=[["Оформлен","Здравствуйте! Ваш заказ "+n+" оформлен, проверяем наличие. Скоро подтвердим."+pay],["Уточнить","Здравствуйте! По заказу "+n+" нужно уточнить детали. Откройте в приложении QALA PVL: «Мои заказы»."]];
+  else if(o.status==="accepted")L=[["Принят","Заказ "+n+" принят. Статус смотрите в приложении QALA PVL: «Мои заказы»."+pay],c?["Подтвердить адрес","Заказ "+n+": зайдите в приложение QALA PVL → «Мои заказы» и проверьте адрес доставки: "+(o.address||"")+". Ответьте, если нужно изменить."]:["Ждите сообщения","Заказ "+n+" принят. Заберёте, когда сообщим о готовности."]];
+  else if(o.status==="ready")L=c?[["Готов к доставке","Заказ "+n+" собран, скоро передадим курьеру. Проверьте адрес: "+(o.address||"")+"."],["QR при выдаче","Заказ "+n+": при получении покажите QR-код из приложения QALA PVL («Мои заказы»)."]]:[["Готов к выдаче","Заказ "+n+" готов к выдаче. Покажите QR-код из приложения QALA PVL («Мои заказы») при получении."+pay]];
+  else if(o.status==="shipping")L=[["В пути","Заказ "+n+" у курьера"+(o.courierName?" ("+o.courierName+")":"")+", уже в пути."+pay],["QR при выдаче","Заказ "+n+": покажите курьеру QR-код из приложения QALA PVL («Мои заказы»)."]];
+  else if(o.status==="done")L=[["Спасибо","Спасибо за покупку! Заказ "+n+" выдан."+(o.earn?" Вам начислено "+pts(o.earn)+".":"")+" Ждём вас снова."]];
+  else if(o.status==="cancelled")L=[["Отменён","Заказ "+n+" отменён. Если это ошибка, напишите нам."]];
+  return L}
+function soWaBtns(o){var ph=soBuyerPhone(o);if(!ph)return "";var L=soTpl(o);if(!L.length)return "";return '<div style="margin-top:8px"><div class="qm-muted">Написать клиенту в WhatsApp:</div><div class="qm-row" style="flex-wrap:wrap;gap:6px;margin-top:4px">'+L.map(function(t){return '<a class="btn btn-secondary btn-sm" target="_blank" rel="noopener" href="https://wa.me/'+ph+'?text='+encodeURIComponent(t[1])+'">💬 '+esc(t[0])+'</a>'}).join("")+'</div></div>'}
+function soSumHtml(o){var sp=o.spendUsed!=null&&o.status==="done"?o.spendUsed:(o.spend||0);return sp>0?'<div class="qm-row qm-between"><span>Сумма заказа</span><span>'+money(o.sum)+'</span></div><div class="qm-row qm-between"><span>Оплата баллами</span><span>−'+pts(sp)+'</span></div><div class="qm-row qm-between" style="margin-top:2px"><span>К оплате</span><b>'+money(o.sum-sp)+'</b></div>':'<div class="qm-row qm-between" style="margin-top:6px"><span>Итого</span><b>'+money(o.sum)+'</b></div>'}
+async function soAvail(u,oid){var bal=0,pend=0;try{var cr=await gQuery("credits",[["userId","==",u.uid]]);bal=cr.filter(function(c){return c.orgId===oid}).reduce(function(s,c){return s+left(c)},0);var mo=await gQuery("sorders",[["buyerId","==",u.uid]]);pend=mo.filter(function(x){return x.orgId===oid&&["new","accepted","ready","shipping"].indexOf(x.status)>=0}).reduce(function(s,x){return s+(x.spend||0)},0)}catch(e){}return Math.max(0,bal-pend)}
+function soMax(av,sum,R){return R.active?Math.max(0,Math.min(av,Math.floor(sum*(R.maxSpendPct||0)/100))):0}
 function soTotal(items){return Math.round((items||[]).reduce(function(s,i){return s+i.price*i.qty},0))}
-function soWa(o){var ph=String(o.orgPhone||"").replace(/\D/g,"");if(!ph)return "";var t="Заказ № "+o.num+" из QALA PVL\n"+(o.items||[]).map(function(i,k){return (k+1)+". "+i.title+(i.size?" (размер "+i.size+")":"")+" — "+i.qty+" × "+money(i.price)}).join("\n")+"\nИтого: "+money(o.sum)+"\n"+(o.delivery==="courier"?"Доставка: "+(o.address||""):"Самовывоз")+"\nТелефон: "+(o.phone||"")+"\nПроверьте заказ в приложении: раздел бизнеса → Заказы";return "https://wa.me/"+ph+"?text="+encodeURIComponent(t)}
+function soWa(o){var ph=String(o.orgPhone||"").replace(/\D/g,"");if(!ph)return "";var t="Заказ № "+o.num+" из QALA PVL\n"+(o.items||[]).map(function(i,k){return (k+1)+". "+i.title+(i.size?" (размер "+i.size+")":"")+" — "+i.qty+" × "+money(i.price)}).join("\n")+"\nИтого: "+money(o.sum)+(o.spend?"\nБаллами: −"+pts(o.spend)+", к оплате "+money(o.sum-o.spend):"")+"\n"+(o.delivery==="courier"?"Доставка: "+(o.address||""):"Самовывоз")+"\nТелефон: "+(o.phone||"")+"\nПроверьте заказ в приложении: раздел бизнеса → Заказы";return "https://wa.me/"+ph+"?text="+encodeURIComponent(t)}
 async function feePct(orgId){var r=null;try{r=await gGet("orgFees",orgId)}catch(e){}return r&&typeof r.pct==="number"?r.pct:3}
 function soNew(){return Math.round((Date.now()%900000)/10)+1000}
 VIEWS["/checkout"]=async function(){
@@ -2057,20 +2075,25 @@ VIEWS["/checkout"]=async function(){
   var h=head("Оформление заказа","/cart")+'<form data-pform="checkout" class="qm-card"><input type="hidden" name="org" value="'+esc(oid)+'"><b>'+esc(o.name)+'</b>';
   items.forEach(function(i){h+='<div class="qm-row qm-between" style="margin-top:4px"><span>'+esc(i.title)+(i.size?' ('+esc(i.size)+')':'')+' × '+i.qty+'</span><b>'+money(Math.round(i.price*i.qty))+'</b></div>'});
   h+='<div class="qm-row qm-between" style="font-size:18px;margin-top:8px"><span>Итого</span><b>'+money(sum)+'</b></div>';
+  var av=await soAvail(u,oid),mx=soMax(av,sum,R);
+  if(mx>0)h+='<div style="margin-top:10px;padding:10px;background:#e3f5ee;border-radius:10px" data-sp-box data-sum="'+sum+'" data-max="'+mx+'"><b>Списать баллы</b><div class="qm-muted">Доступно: '+pts(av)+' · можно списать до '+pts(mx)+'. За такую покупку баллы не начисляются.</div><label class="qm-f">Сколько баллов списать<input name="spend" type="number" inputmode="numeric" min="0" max="'+mx+'" value="0"></label><div id="sp-prev"></div></div>';
+  else if(av>0)h+='<div class="qm-muted" style="margin-top:8px">У вас '+pts(av)+', но эта организация не разрешает платить ими за заказы.</div>';
   h+='<div style="margin:10px 0 4px"><b>Получение</b></div>';
   if(dm!=="courier")h+='<label class="qm-chk"><input type="radio" name="delivery" value="pickup" checked> Самовывоз</label>';
   if(dm==="courier"||dm==="both")h+='<label class="qm-chk"><input type="radio" name="delivery" value="courier"'+(dm==="courier"?" checked":"")+'> Курьер (адрес ниже)</label>';
   h+='<label class="qm-f">Ваш телефон<input name="phone" type="tel" required placeholder="+7 ___ ___ __ __" value="'+esc(u.phone||"")+'"></label><label class="qm-f">Адрес доставки (если курьер)<input name="address" placeholder="Улица, дом, квартира"></label><label class="qm-f">Комментарий<input name="note" maxlength="200"></label>';
   h+='<div class="qm-muted" style="margin:6px 0">Оплата — напрямую продавцу (приложение деньги не принимает). Отменить можно до статуса «Собран». Баллы начислятся при выдаче по вашему QR.</div><button class="btn btn-primary" type="submit" style="width:100%">Оформить заказ</button></form>';
   return h};
+document.addEventListener("input",function(e){var b=e.target.closest&&e.target.closest("[data-sp-box]");if(!b)return;var sum=Number(b.getAttribute("data-sum")),mx=Number(b.getAttribute("data-max")),v=Math.max(0,Math.min(mx,Math.round(Number(e.target.value)||0))),pv=b.querySelector("#sp-prev");pv.innerHTML=v>0?'<div class="qm-row qm-between"><span>Баллами</span><b>−'+pts(v)+'</b></div><div class="qm-row qm-between" style="font-size:18px"><span>К оплате</span><b>'+money(sum-v)+'</b></div><div class="qm-muted">Баллы за эту покупку не начисляются</div>':''});
 PF.checkout=async function(fd,f,u){
   var oid=String(fd.get("org")),items=cartGroups()[oid]||[];if(!items.length)throw new Error("Корзина пуста");if(noSize(items))throw new Error("Выберите размер");
   var o=await orgInfo(oid);if(!o.ownerId)throw new Error("Организация не найдена");if(o.ownerId===u.uid)throw new Error("Нельзя заказывать у своей организации");
   var R=await getRules(oid),dm=R.delivery||"pickup",del=String(fd.get("delivery")||"pickup");if(del==="courier"&&dm==="pickup")del="pickup";
   var ph=String(fd.get("phone")||"").trim();if(ph.replace(/\D/g,"").length<10)throw new Error("Укажите телефон");
   var ad=String(fd.get("address")||"").trim();if(del==="courier"&&ad.length<5)throw new Error("Укажите адрес доставки");
+  var sumNow=soTotal(items.map(function(i){return {price:i.price,qty:Math.round(i.qty)}})),av=await soAvail(u,oid),mx=soMax(av,sumNow,R),sp=Math.round(Number(fd.get("spend")||0));if(!(sp>=0))sp=0;if(sp>mx)throw new Error("Можно списать не больше "+pts(mx));
   var id=nid(),its=items.map(function(i){return {id:i.id,title:i.title,price:i.price,qty:Math.round(i.qty),unit:i.unit||"",size:i.size||""}});
-  var d={orgId:oid,orgName:o.name,orgPhone:o.whatsapp||o.phone||"",ownerId:o.ownerId,buyerId:u.uid,buyerName:u.name,phone:ph,delivery:del,address:del==="courier"?ad:"",note:String(fd.get("note")||"").slice(0,200),items:its,sum:soTotal(its),num:soNew(),status:"new",createdAt:Date.now(),updatedAt:Date.now()};
+  var d={orgId:oid,orgName:o.name,orgPhone:o.whatsapp||o.phone||"",ownerId:o.ownerId,buyerId:u.uid,buyerName:u.name,phone:ph,delivery:del,address:del==="courier"?ad:"",note:String(fd.get("note")||"").slice(0,200),items:its,sum:soTotal(its),spend:sp,num:soNew(),status:"new",createdAt:Date.now(),updatedAt:Date.now()};
   await gSet("sorders",id,d);
   var rest=cartGet().filter(function(i){return i.orgId!==oid});cartSave(rest);delete SENT[oid];sentSave();
   location.hash="#/shop-orders?new="+id;return "Заказ № "+d.num+" оформлен"};
@@ -2081,9 +2104,9 @@ VIEWS["/shop-orders"]=async function(){
   var h=head("Мои заказы","/cart");
   if(!os.length)return h+'<div class="qm-card">Заказов пока нет.<br><a href="#/products">К товарам</a></div>';
   os.forEach(function(o){var qr=(code&&(o.status==="accepted"||o.status==="ready"||o.status==="shipping"));var wa=o.status==="new"?soWa(o):"";
-    h+='<div class="qm-card" style="margin-top:10px'+(o.id===nw?';border-color:#12805c':'')+'"><div class="qm-row qm-between"><b>Заказ № '+o.num+' · '+esc(o.orgName)+'</b>'+soBadge(o.status)+'</div><div class="qm-muted">'+dt(o.createdAt)+' · '+(o.delivery==="courier"?'Доставка: '+esc(o.address):'Самовывоз')+'</div>'+soLines(o)+'<div class="qm-row qm-between" style="margin-top:6px"><span>Итого</span><b>'+money(o.sum)+'</b></div>';
+    h+='<div class="qm-card" style="margin-top:10px'+(o.id===nw?';border-color:#12805c':'')+'"><div class="qm-row qm-between"><b>Заказ № '+o.num+' · '+esc(o.orgName)+'</b>'+soBadge(o.status)+'</div><div class="qm-muted">'+dt(o.createdAt)+' · '+(o.delivery==="courier"?'Доставка: '+esc(o.address):'Самовывоз')+'</div>'+soLines(o)+soSumHtml(o);
     if(o.courierName&&o.status!=="done")h+='<div class="qm-muted">Курьер: '+esc(o.courierName)+'</div>';
-    if(o.status==="done"&&o.earn)h+='<div style="color:#12805c">Начислено: +'+pts(o.earn)+'</div>';
+    if(o.status==="done")h+='<div style="margin-top:8px;padding:10px;background:#e3f5ee;border-radius:10px;color:#12805c"><b>🎉 Заказ выдан. Спасибо за покупку!</b>'+(o.earn?'<div>Начислено: +'+pts(o.earn)+'</div>':'')+(o.spendUsed?'<div>Списано баллов: '+pts(o.spendUsed)+'</div>':'')+'</div>';
     if(wa)h+='<a class="btn btn-secondary btn-sm" target="_blank" rel="noopener" href="'+esc(wa)+'" style="margin-top:8px">Уведомить продавца в WhatsApp</a>';
     if(o.status==="new")h+='<div class="qm-muted" style="margin-top:4px">Ждём, пока продавец примет заказ.</div>';
     if(qr)h+='<div style="margin-top:8px;text-align:center"><div class="qm-muted">Покажите этот QR при получении</div><div data-act="qrBig" data-id="'+esc(code)+'" style="margin:6px auto;width:180px;cursor:zoom-in">'+qrSvg(qrPayload(code),180)+'</div><b style="letter-spacing:3px">'+esc(code)+'</b></div>';
@@ -2099,12 +2122,14 @@ async function soOrg(u){var P=await pickOrg(u);return P}
 function boTabs(org,orgs,t){var n=SON;return (orgs.length>1?'<div class="qm-tabs">'+orgs.map(function(o){return '<a href="#/business/orders?o='+esc(o.id)+'&t='+t+'"'+(o.id===org.id?' class="on"':'')+'>'+esc(o.name)+'</a>'}).join("")+'</div>':'')+'<div class="qm-tabs">'+[["act","В работе"+(n?" ("+n+")":"")],["done","Выданные"],["old","Отменённые"],["cur","Курьеры"],["fee","Комиссия"]].map(function(x){return '<a href="#/business/orders?o='+esc(org.id)+'&t='+x[0]+'"'+(x[0]===t?' class="on"':'')+'>'+x[1]+'</a>'}).join("")+'</div>'}
 async function soSettle(o,u,org){ /* начисление баллов и комиссии после выдачи; безопасно вызывать повторно */
   if(o.settled||o.status!=="done")return;
-  var R=await getRules(org.id),pct=await feePct(org.id),earn=(R.active&&o.sum>=(R.minPurchase||0))?Math.floor(o.sum*R.earnPct/100):0,fee=Math.round(o.sum*pct/100),now=Date.now(),ops=[],eid="so"+o.id+"e";
+  var R=await getRules(org.id),pct=await feePct(org.id),earn=(R.active&&!(o.spend>0)&&o.sum>=(R.minPurchase||0))?Math.floor(o.sum*R.earnPct/100):0,fee=Math.round(o.sum*pct/100),now=Date.now(),ops=[],eid="so"+o.id+"e",use=0,parts=[];
+  if(o.spend>0){var cs=(await clientCredits(org,u,o.buyerId)).filter(function(c){return left(c)>0}).sort(function(a,b){return (a.__p?1:0)-(b.__p?1:0)||a.createdAt-b.createdAt}),bal=cs.reduce(function(s,c){return s+left(c)},0);use=Math.min(o.spend,bal);var r=use;
+    for(var q=0;q<cs.length&&r>0;q++){var tk=Math.min(r,left(cs[q]));ops.push({t:"patch",n:"credits",id:cs[q].id,p:cs[q].__p?{spent:(cs[q].spent||0)+tk,spentAt:now,spentOrg:org.id}:{spent:(cs[q].spent||0)+tk,spentAt:now}});parts.push({id:cs[q].id,amt:tk,org:cs[q].orgId});r-=tk}}
   if(earn>0)ops.push({t:"set",n:"credits",id:eid,data:{orgId:org.id,orgName:org.name,ownerId:u.uid,userId:o.buyerId,userName:o.buyerName,code:o.buyerCode||"",kind:"client",saleSum:o.sum,pct:R.earnPct,points:earn,note:"заказ № "+o.num,spent:0,status:"active",createdAt:now,expiresAt:R.expiryDays>0?now+R.expiryDays*864e5:0}});
   var rl=null,rp=0,rid="";try{rl=await gGet("refLinks",o.buyerId)}catch(e){}
-  if(rl&&rl.referrerUid&&rl.referrerUid!==u.uid&&R.active&&(R.refPct||0)>0){rp=Math.floor(o.sum*R.refPct/100);if(rp>0){rid="so"+o.id+"r";ops.push({t:"set",n:"credits",id:rid,data:{orgId:org.id,orgName:org.name,ownerId:u.uid,userId:rl.referrerUid,userName:rl.referrerName||"",buyerId:o.buyerId,orderId:o.id,kind:"referral",saleSum:o.sum,pct:R.refPct,points:rp,note:"бонус за приглашённого клиента (заказ № "+o.num+")",spent:0,status:"active",createdAt:now,expiresAt:R.expiryDays>0?now+R.expiryDays*864e5:0}})}}
+  if(rl&&rl.referrerUid&&rl.referrerUid!==u.uid&&R.active&&(R.refPct||0)>0){rp=Math.floor((o.sum-use)*R.refPct/100);if(rp>0){rid="so"+o.id+"r";ops.push({t:"set",n:"credits",id:rid,data:{orgId:org.id,orgName:org.name,ownerId:u.uid,userId:rl.referrerUid,userName:rl.referrerName||"",buyerId:o.buyerId,orderId:o.id,kind:"referral",saleSum:o.sum,pct:R.refPct,points:rp,note:"бонус за приглашённого клиента (заказ № "+o.num+")",spent:0,status:"active",createdAt:now,expiresAt:R.expiryDays>0?now+R.expiryDays*864e5:0}})}}
   ops.push({t:"set",n:"shopFees",id:o.id,data:{orgId:org.id,orgName:org.name,ownerId:u.uid,orderId:o.id,num:o.num,sum:o.sum,pct:pct,fee:fee,paid:false,status:"due",createdAt:now}});
-  ops.push({t:"patch",n:"sorders",id:o.id,p:{settled:true,earn:earn,earnId:earn>0?eid:"",refId:rid,refPoints:rp,fee:fee,feePct:pct,updatedAt:now}});
+  ops.push({t:"patch",n:"sorders",id:o.id,p:{settled:true,earn:earn,earnId:earn>0?eid:"",refId:rid,refPoints:rp,parts:parts,spendUsed:use,fee:fee,feePct:pct,updatedAt:now}});
   for(var i=0;i<(o.items||[]).length;i++){var it=o.items[i];if(!it.size)continue;var p=await gGet("products",it.id);if(p&&p.sizes&&p.orgId===org.id){var s=Object.assign({},p.sizes);s[it.size]=Math.max(0,(Number(s[it.size])||0)-it.qty);ops.push({t:"patch",n:"products",id:p.id||it.id,p:{sizes:s}})}}
   ops.push(audit(org.id,u,"shopSettle",o.id,{sum:o.sum,fee:fee}));
   await commit(ops)}
@@ -2113,26 +2138,29 @@ VIEWS["/business/orders"]=async function(){
   var P=await soOrg(u);if(!P.org)return head("Заказы","/profile")+'<div class="qm-card">У вас пока нет организации.</div>';
   var org=P.org,t=qs().get("t")||"act",R=await getRules(org.id);
   var all=(await gQuery("sorders",[["ownerId","==",u.uid]])).filter(function(o){return o.orgId===org.id}).sort(function(a,b){return b.createdAt-a.createdAt});
-  for(var k=0;k<all.length;k++)if(all[k].status==="done"&&!all[k].settled){try{await soSettle(all[k],u,org);all[k]=await gGet("sorders",all[k].id)}catch(e){console.warn(e)}}
-  SON=all.filter(function(o){return o.status==="new"}).length;
+  for(var k=0;k<all.length;k++)if(all[k].status==="done"&&!all[k].settled){try{await soSettle(all[k],u,org);all[k]=await gGet("sorders",all[k].id)}catch(e){SOERR[all[k].id]=errText(e);console.warn(e)}}
+  SON=all.filter(function(o){return o.status==="new"}).length;updSoBadge();
   var h=head("Заказы магазина","/profile")+boTabs(P.org,P.orgs,t);
   if(t==="cur"){
     var cs=(await gQuery("couriers",[["ownerId","==",u.uid]])).filter(function(c){return c.orgId===org.id});
     h+='<div class="qm-card"><b>Курьеры</b>'+(cs.length?cs.map(function(c){return '<div class="qm-rev qm-row qm-between"><span>'+esc(c.name)+'</span><button class="btn btn-ghost btn-sm" data-act="coDel" data-id="'+esc(c.id)+'">Убрать</button></div>'}).join(""):'<div class="qm-muted">Курьеров нет</div>')+'<form data-pform="courierAdd" style="margin-top:8px"><input type="hidden" name="org" value="'+esc(org.id)+'"><label class="qm-f">QALA-код курьера (из раздела «Баллы»)<input name="code" maxlength="8" required></label><button class="btn btn-primary btn-sm" type="submit">Добавить курьера</button></form></div><div class="qm-muted" style="margin-top:8px">Курьер входит в свой аккаунт и видит назначенные ему заказы в разделе «Курьер» (#/courier).</div>';
     return h}
   if(t==="fee"){
-    var fs=(await gQuery("shopFees",[["ownerId","==",u.uid]])).filter(function(f){return f.orgId===org.id&&f.status!=="void"}).sort(function(a,b){return b.createdAt-a.createdAt}),pct=await feePct(org.id),due=fs.filter(function(f){return !f.paid}).reduce(function(s,f){return s+f.fee},0);
-    h+='<div class="qm-card"><div class="qm-muted">Ваш процент комиссии</div><b style="font-size:20px">'+pct+'%</b> <span class="qm-muted">от суммы выданного заказа (устанавливает администратор)</span><div class="qm-muted" style="margin-top:8px">К оплате</div><div class="qm-price">'+money(due)+'</div><div class="qm-muted" style="margin-top:6px">'+esc(PAY_TEXT)+'</div></div>';
-    h+=fs.length?fs.map(function(f){return '<div class="qm-card qm-row qm-between" style="margin-top:8px"><span>Заказ № '+f.num+' · '+money(f.sum)+' × '+f.pct+'%<div class="qm-muted">'+dt(f.createdAt)+'</div></span><span><b>'+money(f.fee)+'</b><br><span class="qm-st '+(f.paid?"ok":"warn")+'">'+(f.paid?"Оплачено":"К оплате")+'</span></span></div>'}).join(""):'<div class="qm-card qm-muted" style="margin-top:8px">Комиссий пока нет</div>';
+    var fs=(await gQuery("shopFees",[["ownerId","==",u.uid]])).filter(function(f){return f.status!=="void"}).sort(function(a,b){return b.createdAt-a.createdAt}),pct=await feePct(org.id),due=fs.filter(function(f){return !f.paid}).reduce(function(s,f){return s+f.fee},0);
+    h+='<div class="qm-card"><div class="qm-muted">Ваш процент комиссии</div><b style="font-size:20px">'+pct+'%</b> <span class="qm-muted">от суммы выданного заказа (устанавливает администратор)</span><div class="qm-muted" style="margin-top:8px">К оплате (по всем вашим организациям)</div><div class="qm-price">'+money(due)+'</div><div class="qm-muted" style="margin-top:6px">'+esc(PAY_TEXT)+'</div></div>';
+    h+=fs.length?fs.map(function(f){return '<div class="qm-card qm-row qm-between" style="margin-top:8px"><span>'+esc(f.orgName||"")+' · заказ № '+f.num+' · '+money(f.sum)+' × '+f.pct+'%<div class="qm-muted">'+dt(f.createdAt)+'</div></span><span><b>'+money(f.fee)+'</b><br><span class="qm-st '+(f.paid?"ok":"warn")+'">'+(f.paid?"Оплачено":"К оплате")+'</span></span></div>'}).join(""):'<div class="qm-card qm-muted" style="margin-top:8px">Комиссий пока нет</div>';
     return h}
   var f2=t==="act"?function(o){return ["new","accepted","ready","shipping"].indexOf(o.status)>=0}:t==="done"?function(o){return o.status==="done"||o.status==="refunded"}:function(o){return o.status==="cancelled"};
-  var L=all.filter(f2);
+  var L=all.filter(f2),sf=qs().get("s")||"";
+  if(t==="act"){var SS=[["","Все"],["new","Новые"],["accepted","Приняты"],["ready","Собраны"],["shipping","У курьера"]];
+    h+='<div class="qm-tabs" style="margin-top:6px">'+SS.map(function(x){var n=x[0]?L.filter(function(o){return o.status===x[0]}).length:L.length;return '<a href="#/business/orders?o='+esc(org.id)+'&t=act&s='+x[0]+'"'+(x[0]===sf?' class="on"':'')+'>'+x[1]+' '+n+'</a>'}).join("")+'</div>';
+    if(sf)L=L.filter(function(o){return o.status===sf})}
   if(t==="act")h+='<div class="qm-muted" style="margin:6px 0">Доставка: '+({pickup:"только самовывоз",courier:"только курьер",both:"самовывоз и курьер"}[R.delivery||"pickup"])+' (меняется в «Программе»)</div>';
   if(!L.length)return h+'<div class="qm-card qm-muted">Заказов нет</div>';
   var cs2=t==="act"?(await gQuery("couriers",[["ownerId","==",u.uid]])).filter(function(c){return c.orgId===org.id}):[];
   L.forEach(function(o){
-    h+='<div class="qm-card" style="margin-top:10px"><div class="qm-row qm-between"><b>№ '+o.num+' · '+esc(o.buyerName||"")+'</b>'+soBadge(o.status)+'</div><div class="qm-muted">'+dt(o.createdAt)+' · <a href="tel:'+esc(o.phone)+'">'+esc(o.phone)+'</a> · '+(o.delivery==="courier"?'Доставка: '+esc(o.address):'Самовывоз')+'</div>'+(o.note?'<div>Комментарий: '+esc(o.note)+'</div>':'')+soLines(o)+'<div class="qm-row qm-between" style="margin-top:6px"><span>Итого</span><b>'+money(o.sum)+'</b></div>';
-    if(o.status==="done")h+='<div class="qm-muted">Клиенту +'+pts(o.earn||0)+(o.refPoints?' · пригласившему +'+pts(o.refPoints):'')+' · комиссия '+money(o.fee||0)+' ('+(o.feePct||0)+'%)</div>';
+    h+='<div class="qm-card" style="margin-top:10px"><div class="qm-row qm-between"><b>№ '+o.num+' · '+esc(o.buyerName||"")+'</b>'+soBadge(o.status)+'</div><div class="qm-muted">'+dt(o.createdAt)+' · <a href="tel:'+esc(o.phone)+'">'+esc(o.phone)+'</a> · '+(o.delivery==="courier"?'Доставка: '+esc(o.address):'Самовывоз')+'</div>'+(o.note?'<div>Комментарий: '+esc(o.note)+'</div>':'')+soLines(o)+soSumHtml(o)+(o.status==="done"&&!o.settled?'<div style="color:#b42318;margin-top:4px">Баллы и комиссия не записаны: '+esc(SOERR[o.id]||"ещё не обработано")+' <button class="btn btn-secondary btn-sm" data-act="soRetry" data-id="'+o.id+'">Повторить</button></div>':'');
+    if(o.status==="done"&&o.settled)h+='<div class="qm-muted">Клиенту +'+pts(o.earn||0)+(o.refPoints?' · пригласившему +'+pts(o.refPoints):'')+' · комиссия '+money(o.fee||0)+' ('+(o.feePct||0)+'%)</div>';
     var b='';
     if(o.status==="new")b+='<button class="btn btn-primary btn-sm" data-act="soAccept" data-id="'+o.id+'">Принять</button>';
     if(o.status==="accepted")b+='<button class="btn btn-primary btn-sm" data-act="soReady" data-id="'+o.id+'">Собран</button>';
@@ -2141,9 +2169,10 @@ VIEWS["/business/orders"]=async function(){
     if(o.status==="shipping")b+='<span class="qm-muted">Курьер: '+esc(o.courierName||"")+'</span> <button class="btn btn-secondary btn-sm" data-act="soHand" data-id="'+o.id+'">📷 Выдать по QR</button>';
     if(o.status==="new"||o.status==="accepted")b+=' <button class="btn btn-ghost btn-sm" data-act="soCancelS" data-id="'+o.id+'">Отменить</button>';
     if(o.status==="done")b+='<button class="btn btn-ghost btn-sm" data-act="soRefund" data-id="'+o.id+'">↩ Возврат по QR</button>';
-    h+='<div class="qm-row" style="margin-top:8px;flex-wrap:wrap;gap:6px">'+b+'</div></div>'});
+    h+='<div class="qm-row" style="margin-top:8px;flex-wrap:wrap;gap:6px">'+b+'</div>'+soWaBtns(o)+'</div>'});
   return h};
-var SON=0;
+var SON=0,SOERR={};
+ACT.soRetry=async function(id){var u=me(),o=await gGet('sorders',id),org=await gGet('organizations',o.orgId);await soSettle(o,u,org);toast('Начисление записано')};
 async function soSet(id,p){await gPatch("sorders",id,Object.assign({updatedAt:Date.now()},p))}
 ACT.soAccept=async function(id){await soSet(id,{status:"accepted"});toast("Заказ принят")};
 ACT.soReady=async function(id){await soSet(id,{status:"ready"});toast("Заказ собран. Отмена теперь недоступна")};
@@ -2152,11 +2181,14 @@ document.addEventListener("change",function(e){var s=e.target;if(!s||!s.getAttri
   soSet(id,{courierId:cid,courierName:nm}).then(function(){toast("Назначен курьер: "+nm+". Он заберёт заказ в своём кабинете");render(true)},function(er){toast(errText(er),1)})});
 function scanBuyer(o,cb){return openScanner(function(raw){var c=parseScan(raw);if(!c)return false;gGet("refCodes",c).then(function(r){if(!r||r.uid!==o.buyerId){toast("Это QR другого клиента",1);return}cb(c)},function(er){toast(errText(er),1)});return true},"Наведите камеру на QR покупателя (заказ № "+o.num+")")}
 ACT.soHand=async function(id){var u=me(),o=await gGet("sorders",id);if(!o||["ready","shipping","accepted"].indexOf(o.status)<0)throw new Error("Заказ нельзя выдать в статусе «"+o.status+"»");
+  if(o.spend>0){var org0=await gGet("organizations",o.orgId),cs0=await clientCredits(org0,u,o.buyerId),b0=cs0.reduce(function(s,c){return s+left(c)},0);if(b0<o.spend)throw new Error("У клиента сейчас только "+pts(b0)+", а в заказе списание "+pts(o.spend)+". Отмените заказ или договоритесь с клиентом")}
   await scanBuyer(o,function(code){soSet(id,{status:"done",doneAt:Date.now(),buyerCode:code}).then(async function(){var org=await gGet("organizations",o.orgId),n=await gGet("sorders",id);await soSettle(n,u,org);toast("Выдано. Клиенту начислено "+pts(n.earn||0)+(n.earn?"":"")+", комиссия записана");render(true)},function(er){toast(errText(er),1)})})};
 ACT.soRefund=async function(id){var u=me(),o=await gGet("sorders",id);if(!o||o.status!=="done")return;
   await scanBuyer(o,function(code){if(!confirm("Оформить возврат заказа № "+o.num+"? Баллы клиента аннулируются, комиссия отменяется."))return;
     (async function(){var ops=[],now=Date.now();
       if(o.earnId){var e=await gGet("credits",o.earnId);if(e&&(e.spent||0)>0)throw new Error("Баллы за этот заказ уже потрачены, возврат невозможен");if(e)ops.push({t:"patch",n:"credits",id:o.earnId,p:{status:"void"}})}
+      (o.parts||[]).forEach(function(pt){});
+      for(var pi=0;pi<(o.parts||[]).length;pi++){var cc=await gGet("credits",o.parts[pi].id);if(cc)ops.push({t:"patch",n:"credits",id:cc.id,p:cc.orgId!==o.orgId?{spent:Math.max(0,(cc.spent||0)-o.parts[pi].amt),spentAt:now,spentOrg:o.orgId}:{spent:Math.max(0,(cc.spent||0)-o.parts[pi].amt),spentAt:now}})}
       if(o.refId){var rc=await gGet("credits",o.refId);if(rc&&(rc.spent||0)>0)throw new Error("Реферальные баллы по этому заказу уже потрачены, возврат невозможен");if(rc)ops.push({t:"patch",n:"credits",id:o.refId,p:{status:"void"}})}
       var fe=await gGet("shopFees",o.id);if(fe&&!fe.paid)ops.push({t:"patch",n:"shopFees",id:o.id,p:{status:"void",voidedAt:now}});
       for(var i=0;i<(o.items||[]).length;i++){var it=o.items[i];if(!it.size)continue;var p=await gGet("products",it.id);if(p&&p.sizes&&p.orgId===o.orgId){var s=Object.assign({},p.sizes);s[it.size]=(Number(s[it.size])||0)+it.qty;ops.push({t:"patch",n:"products",id:p.id||it.id,p:{sizes:s}})}}
@@ -2190,16 +2222,29 @@ VIEWS["/admin/shops"]=async function(){
   h+='</div>';return h};
 PF.orgFee=async function(fd,f,u){if(!u.admin)throw new Error("Нет прав");var p=Math.round(Number(fd.get("pct")));if(!(p>=0&&p<=50))throw new Error("От 0 до 50");await commit([{t:"set",n:"orgFees",id:String(fd.get("org")),data:{pct:p,updatedAt:Date.now(),by:u.uid}}]);return "Процент сохранён"};
 ACT.sfPaid=async function(id){await gPatch("shopFees",id,{paid:true,paidAt:Date.now()});toast("Отмечено оплаченным")};
+var BUYP=0;
+async function checkBuyer(){var u=me();if(!u)return;
+  try{var os=await gQuery("sorders",[["buyerId","==",u.uid]]),k="qm:soSt:"+u.uid,old=null;try{old=JSON.parse(localStorage.getItem(k)||"null")}catch(e){}var cur={},ch=false;
+    os.forEach(function(o){cur[o.id]=o.status;if(old&&old[o.id]!==o.status){ch=true;var m={accepted:"принят продавцом",ready:"собран",shipping:"передан курьеру",cancelled:"отменён",refunded:"возвращён"}[o.status];
+      if(o.status==="done")toast("🎉 Заказ № "+o.num+" выдан. Спасибо за покупку!"+(o.earn?" Начислено +"+pts(o.earn):""));else if(m)toast("Заказ № "+o.num+" "+m)}});
+    try{localStorage.setItem(k,JSON.stringify(cur))}catch(e){}
+    if(ch&&path()==="/shop-orders")render(true)}catch(e){}}
 var SOPOLL=0;
+function updSoBadge(){
+  var b=document.querySelector("[data-qmso]");if(b){b.href=SON>0?"#/business/orders?t=act&s=new":"#/shop-orders";b.title=SON>0?"Новые заказы: "+SON:"Мои заказы";var d=b.querySelector(".qm-dot");if(SON>0){if(!d){d=document.createElement("span");d.className="qm-dot";b.style.position="relative";b.appendChild(d)}d.textContent=SON}else if(d)d.remove()}
+  var a=document.querySelector("[data-qxo]");if(a)a.textContent="Заказы"+(SON?" ("+SON+")":"");
+  var bn=document.getElementById("qm-sobanner"),pp=path(),show=SON>0&&me()&&(pp.indexOf("/business")===0||pp==="/profile"||pp==="/")&&pp!=="/business/orders";
+  if(show&&!bn){var m=document.querySelector("main.page");if(m){bn=document.createElement("a");bn.id="qm-sobanner";bn.href="#/business/orders?t=act&s=new";bn.style.cssText="display:block;margin:10px 16px;padding:12px 14px;border-radius:12px;background:#fff4d6;color:#9a6700;font-weight:700;text-decoration:none";m.insertBefore(bn,m.firstChild)}}
+  if(bn){if(!show)bn.remove();else{var t="🛒 Новых заказов: "+SON+" — открыть";if(bn.textContent!==t)bn.textContent=t}}}
 async function checkShop(){var u=me();if(!u){SON=0;return}
   try{var os=(await gQuery("sorders",[["ownerId","==",u.uid]])).filter(function(o){return o.status==="new"});SON=os.length;
     var seen=[];try{seen=JSON.parse(localStorage.getItem("qm:seenSO")||"[]")}catch(e){}var fr=os.filter(function(o){return seen.indexOf(o.id)<0});
     if(fr.length&&path()!=="/business/orders"){toast("🛒 Новый заказ № "+fr[0].num+(fr.length>1?" и ещё "+(fr.length-1):"")+". Бизнес → Заказы");try{localStorage.setItem("qm:seenSO",JSON.stringify(seen.concat(fr.map(function(o){return o.id})).slice(-80)))}catch(e){}}
   }catch(e){SON=0}
-  var a=document.querySelector("[data-qxo]");if(a)a.textContent="Заказы"+(SON?" ("+SON+")":"")}
-function enhShopNav(){if(!SOPOLL){SOPOLL=1;setTimeout(checkShop,1500);setInterval(checkShop,45000)}
-  var sn=document.querySelector(".subnav");if(sn&&path().indexOf("/business")===0&&me()&&!sn.querySelector("[data-qxo]")){var a=document.createElement("a");a.href="#/business/orders";a.dataset.qxo=1;a.textContent="Заказы";if(path()==="/business/orders")a.className="active";sn.appendChild(a)}
-  var ta=document.querySelector(".top-actions");if(ta&&!ta.querySelector("[data-qmso]")&&me()){var b=document.createElement("a");b.className="icon-btn";b.dataset.qmso=1;b.href="#/shop-orders";b.title="Мои заказы";b.setAttribute("aria-label","Мои заказы");b.style.fontSize="20px";b.textContent="📦";var c=ta.querySelector("[data-qmcart]");if(c)ta.insertBefore(b,c);else ta.appendChild(b)}}
+  updSoBadge()}
+function enhShopNav(){if(!SOPOLL){SOPOLL=1;setTimeout(checkShop,1500);setInterval(checkShop,45000);setTimeout(checkBuyer,2500);setInterval(checkBuyer,10000)}
+  var sn=document.querySelector(".subnav");if(sn&&path().indexOf("/business")===0&&me()&&!sn.querySelector("[data-qxo]")){var a=document.createElement("a");a.href="#/business/orders";a.dataset.qxo=1;a.textContent="Заказы";if(path()==="/business/orders")a.className="active";sn.appendChild(a)}updSoBadge();
+  var ta=document.querySelector(".top-actions");if(ta&&!ta.querySelector("[data-qmso]")&&me()){var b=document.createElement("a");b.className="icon-btn";b.dataset.qmso=1;b.href="#/shop-orders";b.title="Мои заказы";b.setAttribute("aria-label","Мои заказы");b.style.fontSize="20px";b.textContent="📦";var c=ta.querySelector("[data-qmcart]");if(c)ta.insertBefore(b,c);else ta.appendChild(b)};updSoBadge()}
 
 /* ===== ФОТО: автообработка с выбором варианта ===== */
 function ppLoad(src){return new Promise(function(res,rej){
