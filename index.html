@@ -2186,7 +2186,7 @@ document.addEventListener("click",function(e){var t=e.target.closest&&e.target.c
   setTimeout(function(){busy=0;cur="";sched()},400)},true);
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&path()==="/cart"){busy=0;cur="";sched()}});
 document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("[data-cartsend]");if(a&&noSize(cartGroups()[a.getAttribute("data-cartsend")]||[])){e.preventDefault();e.stopPropagation();toast("Выберите размер у товаров",1);return}if(a){var id=a.getAttribute("data-cartsend");SENT[id]=sig(cartGroups()[id]||[]);sentSave();setTimeout(function(){a.textContent="✓ Отправлено · отправить снова"},200)}});
-function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 09.11 19:14";f.appendChild(d)}
+function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 09.11 19:46";f.appendChild(d)}
 function enhNavCart(){
   var bn=document.querySelector(".bottomnav");if(bn){var a=bn.querySelector("a[data-qmnc]")||bn.querySelector('a[href="#/map"]');
     if(a){if(!a.hasAttribute("data-qmnc")){a.setAttribute("data-qmnc","1");a.setAttribute("href","#/cart");a.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();location.hash="#/cart";busy=0;cur="";sched()},true);a.innerHTML='<span class="nav-badge"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"></circle><circle cx="18" cy="20" r="1.5"></circle><path d="M3 4h2.5l2.2 11h10.6l2-8H6.5"></path></svg></span>Корзина'}
@@ -2542,6 +2542,11 @@ if(CAP){setTimeout(function(){fetch(SITE_URL+"version.json?"+Date.now(),{cache:"
 
 document.addEventListener("change",function(e){var c=e.target;if(c&&c.type==="checkbox"&&c.closest&&c.closest(".qm-ms")){var d=c.closest(".qm-ms"),v=[].slice.call(d.querySelectorAll("input:checked")).map(function(x){return x.value});d.querySelector(".qm-sv").textContent=v.length?v.join(", "):"Выберите из списка"}});
 document.addEventListener("click",function(e){var t=e.target;if(t&&t.hasAttribute&&t.hasAttribute("data-msdone")){var d=t.closest("details");if(d)d.open=false;return}[].forEach.call(document.querySelectorAll("details.qm-ms[open]"),function(d){if(!d.contains(t))d.open=false})});
+
+function enhAutoForm(){var s=document.querySelector("form select[name=spec]");if(!s||!s.form)return;var f=s.form,au=AUTO.indexOf(s.value)>=0,a=f.querySelector("[data-auto]"),na=f.querySelector("[data-noauto]");
+  if(a&&(a.style.display==="block")!==au)a.style.display=au?"block":"none";
+  if(na){var shown=na.style.display!=="none";if(shown===au){na.style.display=au?"none":"block";var ai=na.querySelector("input");if(ai)ai.required=!au}}}
+["change","input","click","touchend","blur"].forEach(function(ev){document.addEventListener(ev,function(){setTimeout(enhAutoForm,30)},true)});
 var BUYP=0;
 var BUYACT=1,BUYL=0;
 async function checkBuyer(){var u=me();if(!u||document.hidden)return;if(!BUYACT&&Date.now()-BUYL<300000)return;BUYL=Date.now();
@@ -2632,7 +2637,7 @@ function diag(){
 }
 window.__qcUid=function(){try{var x=me();return x&&x.uid||""}catch(e){return ""}};var raf=0;
 function sync(){raf=0;try{ensureManager();render(false).catch(function(e){console.warn(e);showErr(e)})}catch(e){console.warn(e);showErr(e)}
-  [injectNav,function(){drawReviews(false)},injectRatings,enhLogin,enhHours,enhAdminPhoto,revTabSync,enhPartnerNav,ensureRefLink,enhShopNav,enhCart,enhCartIcon].forEach(function(fn){try{var r=fn();if(r&&r.catch)r.catch(function(e){console.warn(e)})}catch(e){console.warn(e)}})}
+  [injectNav,function(){drawReviews(false)},injectRatings,enhLogin,enhHours,enhAdminPhoto,revTabSync,enhPartnerNav,ensureRefLink,enhShopNav,enhCart,enhCartIcon,enhAutoForm].forEach(function(fn){try{var r=fn();if(r&&r.catch)r.catch(function(e){console.warn(e)})}catch(e){console.warn(e)}})}
 function showErr(e){var m=$("main.page");if(!m||!VIEWS[path()])return;var v=$("#qm-view");if(!v){v=document.createElement("div");v.id="qm-view";v.className="container";m.appendChild(v)}v.innerHTML='<div class="qm-card">Не удалось открыть раздел: '+esc(errText(e))+'</div>'}
 function sched(){if(!raf)raf=requestAnimationFrame(sync)}
 window.addEventListener("hashchange",function(){busy=0;sched()});
