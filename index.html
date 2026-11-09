@@ -1161,12 +1161,12 @@ VIEWS["/orders/new"]=async function(){
   (m?'<div class="qm-card" style="margin-bottom:10px">Заявка для мастера или автосервиса: <b>'+esc(m.name)+'</b> <span class="qm-muted">('+esc((m.specs||[]).join(", "))+')</span></div>':'<p class="qm-muted">Заявку увидят подходящие мастера. Телефон и адрес они увидят только после того, как возьмут заказ.</p>')+
   '<form data-form="order" data-master="'+esc(mid||"")+'" class="qm-card">'+
   (SPECS.length>1?'<label class="qm-f">Что нужно<select name="spec">'+SPECS.map(function(s){return '<option'+((m&&(m.specs||[])[0]===s)||(!m&&qs().get("spec")===s)?" selected":"")+'>'+s+'</option>'}).join("")+'</select></label>':'<input type="hidden" name="spec" value="'+SPECS[0]+'">')+
-  '<label class="qm-f" data-auto style="display:'+((m&&AUTO.indexOf((m.specs||[])[0])>=0)||AUTO.indexOf(qs().get("spec")||"")>=0?'block':'none')+'">Автомобиль (марка, модель, год)<input name="car" maxlength="60" placeholder="Например: Toyota Camry 2012"></label>'+
+  '<label class="qm-f" data-auto style="display:'+((m&&AUTO.indexOf((m.specs||[])[0])>=0)||AUTO.indexOf(qs().get("spec")||"")>=0?'block':'none')+'">Автомобиль (марка, модель, год)<input name="car" maxlength="60" placeholder="Например: Toyota Camry 2012"><span class="qm-muted">Автосервисы и шиномонтаж не выезжают: вы приедете сами. Адрес сервиса появится в заявке, когда её возьмут.</span></label>'+
   '<label class="qm-f">Коротко: что сделать<input name="title" required maxlength="80" placeholder="Например: заменить розетки в квартире"></label>'+
   '<label class="qm-f">Описание работы<textarea name="descr" maxlength="800" placeholder="Что нужно сделать, какой объём, в какие сроки"></textarea></label>'+
   '<div class="qm-f">Фото работы (до 3 штук, необязательно)<input type="file" name="photos" accept="image/*" multiple><div class="qm-ph" data-prev></div><span class="qm-muted">Фото увидят мастера до того, как возьмут заявку: не снимайте людей и документы.</span></div>'+
   '<label class="qm-f">Район (виден мастерам)<input name="district" placeholder="Например: мкр. Усольский"></label>'+
-  '<label class="qm-f">Точный адрес (увидит только взявший мастер)<input name="address" required></label>'+
+  '<label class="qm-f" data-noauto style="display:'+(((m&&AUTO.indexOf((m.specs||[])[0])>=0)||AUTO.indexOf(qs().get("spec")||"")>=0)?'none':'block')+'">Точный адрес (увидит только взявший мастер)<input name="address"'+(((m&&AUTO.indexOf((m.specs||[])[0])>=0)||AUTO.indexOf(qs().get("spec")||"")>=0)?'':' required')+'></label>'+
   '<label class="qm-f">Ваш телефон (увидит только взявший мастер)<input name="phone" required inputmode="tel" placeholder="+7 7__ ___ __ __"></label>'+
   '<label class="qm-f">Цена, которую вы готовы заплатить, ₸<input name="price" required inputmode="numeric" placeholder="от '+MIN_PRICE+'"></label>'+
   '<p class="qm-muted">Если никто не возьмёт заявку, цену можно повысить.</p>'+
@@ -1183,7 +1183,7 @@ VIEWS["/orders"]=async function(){
     h+='<div class="qm-card"><div class="qm-row qm-between"><b>'+esc(o.title)+'</b>'+stBadge(o.status)+'</div><div class="qm-muted">'+esc(o.spec)+' · '+dt(o.createdAt)+'</div>'+
     phs(o)+'<div class="qm-price" style="margin:6px 0">'+money(o.price)+'</div>';
     if(o.status==="open"){h+='<div class="qm-muted">'+(o.targetMasterId?'Ждём ответа выбранного мастера.':'Пока никто не взял.')+'</div><div class="qm-row" style="margin-top:8px"><button class="btn btn-secondary btn-sm" data-act="raise" data-id="'+o.id+'">Повысить цену</button><button class="btn btn-ghost btn-sm" data-act="cancel" data-id="'+o.id+'">Отменить</button></div>'}
-    if(o.status==="taken"){h+='<div>Взял мастер: <b>'+esc(o.masterName||"")+'</b></div><div id="mp-'+o.id+'" class="qm-muted" data-mphone="'+esc(o.masterId)+'"></div><div style="text-align:center;margin:10px 0;padding:10px;border:1px dashed #6b4fc9;border-radius:12px">'+(codes[o.id]?'<b>QR завершения заказа</b><div style="margin:6px auto;width:200px;max-width:100%">'+qrSvg(doneLink(o.id,codes[o.id]),200)+'</div><div style="font:800 22px monospace;letter-spacing:3px">'+esc(codes[o.id])+'</div><div class="qm-muted">Когда работа выполнена, дайте мастеру считать этот QR (или назовите код). Пока он не считает QR, заказ не завершится. Не показывайте QR раньше времени.</div>':'<div class="qm-muted">Код заказа создаётся… обновите страницу.</div>')+'</div><div class="qm-row"><button class="btn btn-ghost btn-sm" data-act="cancelTaken" data-id="'+o.id+'">Отменить заказ</button></div>'}
+    if(o.status==="taken"){h+='<div>Взял мастер: <b>'+esc(o.masterName||"")+'</b></div><div id="mp-'+o.id+'" class="qm-muted" data-mphone="'+esc(o.masterId)+'"'+(AUTO.indexOf(o.spec)>=0?' data-auto':'')+'></div><div style="text-align:center;margin:10px 0;padding:10px;border:1px dashed #6b4fc9;border-radius:12px">'+(codes[o.id]?'<b>QR завершения заказа</b><div style="margin:6px auto;width:200px;max-width:100%">'+qrSvg(doneLink(o.id,codes[o.id]),200)+'</div><div style="font:800 22px monospace;letter-spacing:3px">'+esc(codes[o.id])+'</div><div class="qm-muted">Когда работа выполнена, дайте мастеру считать этот QR (или назовите код). Пока он не считает QR, заказ не завершится. Не показывайте QR раньше времени.</div>':'<div class="qm-muted">Код заказа создаётся… обновите страницу.</div>')+'</div><div class="qm-row"><button class="btn btn-ghost btn-sm" data-act="cancelTaken" data-id="'+o.id+'">Отменить заказ</button></div>'}
     if(o.status==="done")h+='<div class="qm-muted">Мастер: '+esc(o.masterName||"")+' · выполнено '+dt(o.doneAt)+'</div>';
     h+='</div>';
   });
@@ -1222,7 +1222,7 @@ VIEWS["/master"]=async function(){
     var privs={};for(var i=0;i<mine.length;i++){try{privs[mine[i].id]=await gGet("ordersPrivate",mine[i].id)}catch(e){}}
     h+='<div style="display:grid;gap:10px">'+mine.map(function(o){var p=privs[o.id]||{};return '<div class="qm-card"><div class="qm-row qm-between"><b>'+esc(o.title)+'</b>'+stBadge(o.status)+'</div>'+
      '<div class="qm-muted">'+esc(o.spec)+' · взят '+dt(o.takenAt)+'</div>'+(o.descr?'<div style="margin:6px 0">'+esc(o.descr)+'</div>':'')+phs(o)+'<div class="qm-price">'+money(o.price)+'</div>'+
-     (o.status!=="cancelled"&&p.phone?'<div style="margin-top:6px">Клиент: <b>'+esc(o.clientName||"")+'</b> · <a href="tel:'+esc(p.phone)+'">'+esc(p.phone)+'</a> · <a target="_blank" rel="noopener" href="https://wa.me/'+esc(String(p.phone).replace(/\D/g,""))+'?text='+encodeURIComponent("Здравствуйте! Я мастер из QALA PVL, по вашей заявке «"+o.title+"».")+'">WhatsApp</a></div><div>Адрес: '+esc(p.address||"")+'</div>':'')+
+     (o.status!=="cancelled"&&p.phone?'<div style="margin-top:6px">Клиент: <b>'+esc(o.clientName||"")+'</b> · <a href="tel:'+esc(p.phone)+'">'+esc(p.phone)+'</a> · <a target="_blank" rel="noopener" href="https://wa.me/'+esc(String(p.phone).replace(/\D/g,""))+'?text='+encodeURIComponent("Здравствуйте! Я мастер из QALA PVL, по вашей заявке «"+o.title+"».")+'">WhatsApp</a></div><div>'+(AUTO.indexOf(o.spec)>=0?'Клиент приедет к вам сам':'Адрес: '+esc(p.address||""))+'</div>':'')+
      (o.status==="done"?'<div class="qm-muted" style="margin-top:4px">Комиссия '+money(feeOf(o))+' — '+(o.feePaid?"оплачена":"к оплате")+'</div>':'')+
      (o.status==="taken"?'<div class="qm-muted" style="margin-top:4px">Закончили работу? Считайте QR заказчика: заказ завершится и начислится комиссия '+money(feeOf(o))+'.</div><div class="qm-row" style="margin-top:6px"><button class="btn btn-primary btn-sm" data-act="scanDone" data-id="'+o.id+'" type="button">📷 Считать QR заказчика</button></div><form data-pform="doneCode" class="qm-row" style="margin-top:6px"><input type="hidden" name="id" value="'+o.id+'"><input name="code" required maxlength="8" autocapitalize="characters" placeholder="или код заказчика" style="flex:1;min-width:0"><button class="btn btn-secondary btn-sm" type="submit">Завершить</button></form>':'')+'</div>'}).join("")+'</div>';
   }else{
@@ -1324,7 +1324,7 @@ document.addEventListener("submit",function(e){
     if(!(price>=MIN_PRICE)){toast("Минимальная цена — "+money(MIN_PRICE),1);btn.disabled=false;return}
     var tm=f.getAttribute("data-master")||null,id=nid();
     var order={id:id,clientId:u.uid,clientName:u.name,spec:String(fd.get("spec")),title:String(fd.get("title")).trim(),descr:(String(fd.get("car")||"").trim()?"Авто: "+String(fd.get("car")).trim()+(String(fd.get("descr")||"").trim()?"\n":""):"")+String(fd.get("descr")||"").trim(),district:String(fd.get("district")||"").trim(),photos:(f.__ph||[]).slice(0,3),price:price,targetMasterId:tm,status:"open",masterId:null,masterName:"",fee:0,feePaid:false,createdAt:Date.now(),updatedAt:Date.now()};
-    job=createOrder(order,{clientId:u.uid,phone:String(fd.get("phone")).trim(),address:String(fd.get("address")).trim()}).then(function(){toast("Заявка отправлена");location.hash="#/orders"});
+    job=createOrder(order,{clientId:u.uid,phone:String(fd.get("phone")).trim(),address:AUTO.indexOf(order.spec)>=0?"Клиент приедет сам":String(fd.get("address")||"").trim()}).then(function(){toast("Заявка отправлена");location.hash="#/orders"});
   }else if(kind==="review"){
     var rating=Number(fd.get("rating")),text=String(fd.get("text")||"").trim(),orgId=f.getAttribute("data-org");
     if(!(rating>=1&&rating<=5)){toast("Поставьте оценку",1);btn.disabled=false;return}
@@ -1334,7 +1334,7 @@ document.addEventListener("submit",function(e){
 });
 
 /* ===== БАЛЛЫ (внутренняя валюта организаций) ===== */
-document.addEventListener("change",function(e){var s0=e.target;if(s0&&s0.tagName==="SELECT"&&s0.hasAttribute("data-nav")){location.hash=s0.value;return}if(s0&&s0.tagName==="SELECT"&&s0.value==="master"&&/^\/(register|signup)/.test(path())){location.hash="#/masters/new";return}var s=e.target;if(s&&s.name==="spec"&&s.tagName==="SELECT"){var f=s.form,a=f&&f.querySelector("[data-auto]");if(a)a.style.display=AUTO.indexOf(s.value)>=0?"block":"none"}});
+document.addEventListener("change",function(e){var s0=e.target;if(s0&&s0.tagName==="SELECT"&&s0.hasAttribute("data-nav")){location.hash=s0.value;return}if(s0&&s0.tagName==="SELECT"&&s0.value==="master"&&/^\/(register|signup)/.test(path())){location.hash="#/masters/new";return}var s=e.target;if(s&&s.name==="spec"&&s.tagName==="SELECT"){var f=s.form,a=f&&f.querySelector("[data-auto]"),au=AUTO.indexOf(s.value)>=0;if(a)a.style.display=au?"block":"none";var na=f&&f.querySelector("[data-noauto]");if(na){na.style.display=au?"none":"block";var ai=na.querySelector("input");if(ai)ai.required=!au}}});
 var ALPH="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 function genCode(){var s="";for(var i=0;i<6;i++)s+=ALPH.charAt(Math.floor(Math.random()*ALPH.length));return s}
 function up(s){return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"")}
@@ -1863,7 +1863,7 @@ async function render(force){
 }
 async function fillMasterPhones(v){
   var els=v.querySelectorAll("[data-mphone]");
-  for(var i=0;i<els.length;i++){try{var m=await gGet("masters",els[i].getAttribute("data-mphone"));if(m&&m.phone)els[i].innerHTML='Телефон мастера: <a href="tel:'+esc(m.phone)+'">'+esc(m.phone)+'</a>'}catch(e){}}
+  for(var i=0;i<els.length;i++){try{var m=await gGet("masters",els[i].getAttribute("data-mphone"));if(m&&m.phone)els[i].innerHTML='Телефон мастера: <a href="tel:'+esc(m.phone)+'">'+esc(m.phone)+'</a>'+(m.address&&els[i].hasAttribute("data-auto")?'<div style="margin-top:4px">📍 <b>Приезжайте:</b> '+esc((m.orgName?m.orgName+', ':'')+m.address)+'</div>':'')}catch(e){}}
 }
 
 /* ===== ВСТАВКИ В ГОТОВЫЕ СТРАНИЦЫ ===== */
@@ -2186,7 +2186,7 @@ document.addEventListener("click",function(e){var t=e.target.closest&&e.target.c
   setTimeout(function(){busy=0;cur="";sched()},400)},true);
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&path()==="/cart"){busy=0;cur="";sched()}});
 document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("[data-cartsend]");if(a&&noSize(cartGroups()[a.getAttribute("data-cartsend")]||[])){e.preventDefault();e.stopPropagation();toast("Выберите размер у товаров",1);return}if(a){var id=a.getAttribute("data-cartsend");SENT[id]=sig(cartGroups()[id]||[]);sentSave();setTimeout(function(){a.textContent="✓ Отправлено · отправить снова"},200)}});
-function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 09.11 18:39";f.appendChild(d)}
+function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 09.11 19:14";f.appendChild(d)}
 function enhNavCart(){
   var bn=document.querySelector(".bottomnav");if(bn){var a=bn.querySelector("a[data-qmnc]")||bn.querySelector('a[href="#/map"]');
     if(a){if(!a.hasAttribute("data-qmnc")){a.setAttribute("data-qmnc","1");a.setAttribute("href","#/cart");a.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();location.hash="#/cart";busy=0;cur="";sched()},true);a.innerHTML='<span class="nav-badge"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"></circle><circle cx="18" cy="20" r="1.5"></circle><path d="M3 4h2.5l2.2 11h10.6l2-8H6.5"></path></svg></span>Корзина'}
