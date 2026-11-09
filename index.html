@@ -1,4 +1,4 @@
-<!doctype html><html><head><link rel="preconnect" href="https://www.gstatic.com" crossorigin><link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js" crossorigin><link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js" crossorigin><link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js" crossorigin><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="apple-touch-icon.png"><meta name="theme-color" content="#1840c8"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="QALA PVL"><link rel="preconnect" href="https://www.gstatic.com" crossorigin><link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js" crossorigin><link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js" crossorigin><link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js" crossorigin><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <script>
 window.__photoEdit=function(item,save){
   var W=320,H=240,urls=(item.images&&item.images.length?item.images:(item.imageUrl?[item.imageUrl]:[])).slice(0,3);
@@ -948,6 +948,28 @@ hr,.qm-rev{border-color:#edf0f7}
 .qm-news{display:grid;gap:6px;padding:12px 14px;border-radius:18px;background:#fff4f4;border:1.5px solid #f5b5c0}
 .qm-news a{font-weight:600;text-decoration:none;color:#9f1239}
 .qm-news.qm-calm{background:#f1f5fb;border-color:#e3e8f4;color:#5b6788;font-weight:600}
+html.qm-app{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+html.qm-app body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+html.qm-app input,html.qm-app textarea,html.qm-app [contenteditable]{-webkit-user-select:text;user-select:text}
+html.qm-app #demo-bar{display:none!important}
+html.qm-app a,html.qm-app img{-webkit-user-drag:none;-webkit-touch-callout:none}
+html.qm-app .btn,html.qm-app .qm-tile,html.qm-app nav a,html.qm-app .qm-cc,html.qm-app .tab{transition:transform .1s ease,opacity .1s}
+html.qm-app .btn:active,html.qm-app .qm-tile:active,html.qm-app nav a:active,html.qm-app .qm-cc:active,html.qm-app .tab:active{transform:scale(.95);opacity:.85}
+html.qm-app main.page{animation:qmIn .22s ease-out}
+@keyframes qmIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+#qm-ptr{display:none;position:fixed;top:calc(8px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:9990;background:#1840c8;color:#fff;font:700 13px system-ui;padding:8px 14px;border-radius:999px;box-shadow:0 6px 18px rgba(24,64,200,.35);pointer-events:none}
+.qm-num{flex:0 0 26px;height:26px;border-radius:13px;background:#e8eefc;color:#1840c8;font:800 13px/26px system-ui;text-align:center}
+#qm-upd{position:fixed;left:12px;right:12px;bottom:calc(86px + env(safe-area-inset-bottom));z-index:9991;display:flex;align-items:center;gap:10px;background:#1840c8;color:#fff;padding:10px 14px;border-radius:16px;box-shadow:0 8px 24px rgba(24,64,200,.4);font:600 14px system-ui}
+#qm-upd span{flex:1}#qm-upd a{background:#fff;color:#1840c8;padding:6px 12px;border-radius:10px;font-weight:800;text-decoration:none}#qm-upd b{font-size:20px;padding:0 4px}
+.qm-pick{margin:12px 0 10px}.qm-pick select{width:100%;min-height:48px;border-radius:14px;font-weight:700}
+.qm-ms{position:relative}
+.qm-ms summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:48px;padding:10px 14px;border:1px solid #d8e0f0;border-radius:14px;background:#fff;font-weight:700;cursor:pointer}
+.qm-ms summary::-webkit-details-marker{display:none}
+.qm-ms summary::after{content:"▾";color:#5b6788}
+.qm-ms .qm-sv{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qm-ms .qm-msl{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:40;max-height:42vh;overflow:auto;background:#fff;border:1px solid #d8e0f0;border-radius:16px;box-shadow:0 14px 34px rgba(30,50,110,.22);padding:8px}
+.qm-ms .qm-chk{display:flex!important;align-items:center;gap:10px;padding:8px!important;margin:0!important;min-height:0!important;height:auto!important;line-height:1.3;font-weight:600}.qm-ms .qm-chk input{margin:0!important;min-height:0!important;height:20px!important;width:20px!important;padding:0!important}
+.qm-ms .qm-chk input{width:20px;height:20px;flex:0 0 20px}
 @media(prefers-reduced-motion:no-preference){main.page>*{animation:qmUp .32s cubic-bezier(.2,.8,.2,1) both}@keyframes qmUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}main.page>*:nth-child(2){animation-delay:.04s}main.page>*:nth-child(3){animation-delay:.08s}}
 @media(min-width:900px){.bottomnav{display:none!important}main.page{padding-bottom:32px!important}.topbar-inner{padding:0 24px}}
 </style>
@@ -1106,9 +1128,9 @@ VIEWS["/masters"]=async function(){
    '<div class="qm-entry"><div class="qm-card"><h3>🔧 Я мастер</h3><div class="qm-muted">Укажите свои навыки, получайте заявки и берите подходящие.</div>'+
    (mm?'<a class="btn btn-primary" href="#/master">Войти в кабинет мастера</a>':'<a class="btn btn-primary" href="#/masters/new">Войти / зарегистрироваться как мастер</a>')+'</div>'+
    '<div class="qm-card"><h3>📝 Мне нужен мастер</h3><div class="qm-muted">Опишите работу, приложите фото и назовите цену.</div><div class="qm-row"><a class="btn btn-primary" href="#/orders/new">Создать заявку</a><a class="btn btn-secondary" href="#/orders">Мои заявки</a></div></div></div>'+
-   (SPECS.length>1?'<div class="qm-tabs"><a class="'+(sp?"":"on")+'" href="#/masters">Все</a>'+SPECS.map(function(s){return '<a class="'+(sp===s?"on":"")+'" href="#/masters?s='+encodeURIComponent(s)+'">'+s+'</a>'}).join("")+'</div>':'');
+   (SPECS.length>1?'<label class="qm-f qm-pick"><span>Вид мастера</span><select data-nav><option value="#/masters"'+(sp?"":" selected")+'>Все мастера</option>'+SPECS.map(function(s){return '<option value="#/masters?s='+encodeURIComponent(s)+'"'+(sp===s?" selected":"")+'>'+esc(s)+'</option>'}).join("")+'</select></label><div class="qm-muted" style="margin:-4px 2px 8px">Найдено: '+rows.length+'</div>':'');
   if(!rows.length)h+='<div class="qm-card qm-muted">Пока нет мастеров в этой категории. Станьте первым!</div>';
-  h+='<div style="display:grid;gap:10px">'+rows.map(function(m){return '<div class="qm-card"><div class="qm-row qm-between"><b>'+esc(m.name)+'</b><span class="qm-muted">'+esc(m.district||"")+'</span></div>'+
+  h+='<div style="display:grid;gap:10px">'+rows.map(function(m){return '<div class="qm-card"><div class="qm-row qm-between"><b>'+esc(m.orgName||m.name)+'</b><span class="qm-muted">'+esc(m.district||"")+'</span></div>'+(m.orgName?'<div class="qm-muted">Мастер: '+esc(m.name)+'</div>':'')+(m.address?'<div class="qm-muted">📍 '+esc(m.address)+'</div>':'')+
     '<div class="qm-muted" style="margin:4px 0">'+esc((m.specs||[]).join(", "))+(m.exp?' · опыт '+esc(m.exp)+' лет':'')+'</div>'+(m.skills?'<div style="margin:6px 0"><b>Умею:</b> '+esc(m.skills)+'</div>':'')+(m.about?'<div style="margin:6px 0">'+esc(m.about)+'</div>':'')+
     '<a class="btn btn-primary btn-sm" href="#/orders/new?master='+encodeURIComponent(m.id)+'">Оставить заявку этому мастеру</a></div>'}).join("")+'</div>';
   return h;
@@ -1121,8 +1143,10 @@ VIEWS["/masters/new"]=async function(){
   (m.status?'<div style="margin-bottom:10px">Статус анкеты: '+stBadge(m.status)+'</div>':'<p class="qm-muted">Анкета проходит проверку администратором, после этого вас увидят клиенты и вы сможете брать заявки.</p>')+
   '<form data-form="master" class="qm-card">'+(guest?'<div class="qm-muted" style="margin-bottom:8px">Уже есть аккаунт? <a href="#/login">Войти</a>. Если нет — заполните форму, аккаунт создастся сразу.</div><label class="qm-f">E-mail (для входа)<input name="email" type="email" required autocomplete="email"></label><label class="qm-f">Пароль (минимум 8 символов, буквы и цифры)<input name="password" type="password" required minlength="8" autocomplete="new-password"></label>':'')+'<label class="qm-f">Имя<input name="name" required value="'+esc(m.name)+'"></label>'+
   '<label class="qm-f">Телефон (WhatsApp)<input name="phone" required inputmode="tel" value="'+esc(m.phone||"")+'" placeholder="+7 7__ ___ __ __"></label>'+
-  (SPECS.length>1?'<div class="qm-f">Специальности'+SPECS.map(function(s){return '<label class="qm-chk"><input type="checkbox" name="spec" value="'+s+'"'+((m.specs||[]).indexOf(s)>=0?" checked":"")+'> '+s+'</label>'}).join("")+'</div>':'<input type="hidden" name="spec" value="'+SPECS[0]+'">')+
+  (SPECS.length>1?'<div class="qm-f">Специальности (можно несколько)<details class="qm-ms"><summary><span class="qm-sv">'+(esc((m.specs||[]).join(", "))||"Выберите из списка")+'</span></summary><div class="qm-msl">'+SPECS.map(function(s){return '<label class="qm-chk"><input type="checkbox" name="spec" value="'+s+'"'+((m.specs||[]).indexOf(s)>=0?" checked":"")+'> '+s+'</label>'}).join("")+'<button type="button" class="btn btn-primary btn-sm" data-msdone style="width:100%;margin-top:6px">Готово</button></div></details></div>':'<input type="hidden" name="spec" value="'+SPECS[0]+'">')+
   '<label class="qm-f">Что именно умеете делать (навыки)<textarea name="skills" maxlength="400" placeholder="Например: проводка и розетки; для автосервиса: ремонт ходовой, диагностика, замена масла">'+esc(m.skills||"")+'</textarea></label>'+
+  '<label class="qm-f">Название организации или автосервиса (если есть)<input name="orgName" maxlength="80" value="'+esc(m.orgName||"")+'" placeholder="Например: Автосервис «Мотор»"></label>'+
+  '<label class="qm-f">Адрес (если принимаете в мастерской или офисе)<input name="address" maxlength="120" value="'+esc(m.address||"")+'" placeholder="Улица, дом"></label>'+
   '<label class="qm-f">Район / где работаете<input name="district" value="'+esc(m.district||"")+'" placeholder="Павлодар, весь город"></label>'+
   '<label class="qm-f">Опыт, лет<input name="exp" inputmode="numeric" value="'+esc(m.exp||"")+'"></label>'+
   '<label class="qm-f">О себе<textarea name="about" maxlength="500">'+esc(m.about||"")+'</textarea></label>'+
@@ -1214,7 +1238,7 @@ VIEWS["/admin/masters"]=async function(){
   var tab=qs().get("t")||"masters",h=head("Мастера, комиссии и отзывы","/admin")+'<div class="qm-tabs"><a class="'+(tab==="masters"?"on":"")+'" href="#/admin/masters?t=masters">Электрики</a><a class="'+(tab==="fees"?"on":"")+'" href="#/admin/masters?t=fees">Комиссии</a><a class="'+(tab==="reviews"?"on":"")+'" href="#/admin/masters?t=reviews">Отзывы</a><a class="'+(tab==="taken"?"on":"")+'" href="#/admin/masters?t=taken">В работе</a><a class="'+(tab==="partners"?"on":"")+'" href="#/admin/masters?t=partners">Партнёры'+(PNA?' ('+PNA+')':'')+'</a><a href="#/admin/shops">Магазины</a></div>';
   if(tab==="masters"){
     var ms=(await gQuery("masters",[])).sort(function(a,b){return (a.status==="pending"?0:1)-(b.status==="pending"?0:1)});
-    h+=ms.length?'<div style="display:grid;gap:10px">'+ms.map(function(m){return '<div class="qm-card"><div class="qm-row qm-between"><b>'+esc(m.name)+'</b>'+stBadge(m.status)+'</div><div class="qm-muted">'+esc((m.specs||[]).join(", "))+' · '+esc(m.phone||"")+' · '+esc(m.district||"")+'</div>'+(m.skills?'<div>Навыки: '+esc(m.skills)+'</div>':'')+(m.about?'<div>'+esc(m.about)+'</div>':'')+
+    h+=ms.length?'<div style="display:grid;gap:10px">'+ms.map(function(m){return '<div class="qm-card"><div class="qm-row qm-between"><b>'+esc(m.name)+(m.orgName?' · '+esc(m.orgName):'')+'</b>'+stBadge(m.status)+'</div><div class="qm-muted">'+esc((m.specs||[]).join(", "))+' · '+esc(m.phone||"")+' · '+esc(m.district||"")+'</div>'+(m.skills?'<div>Навыки: '+esc(m.skills)+'</div>':'')+(m.about?'<div>'+esc(m.about)+'</div>':'')+
       '<div class="qm-row" style="margin-top:8px">'+(m.status!=="approved"?'<button class="btn btn-primary btn-sm" data-act="mApprove" data-id="'+m.id+'">Одобрить</button>':'')+(m.status!=="rejected"?'<button class="btn btn-secondary btn-sm" data-act="mReject" data-id="'+m.id+'">Отклонить</button>':'')+'</div></div>'}).join("")+'</div>':'<div class="qm-card qm-muted">Мастеров пока нет.</div>';
   }else if(tab==="partners"){
     var pl=(await gQuery("partners",[])).sort(function(a,b){return (a.status==="review"?0:1)-(b.status==="review"?0:1)||(b.updatedAt||0)-(a.updatedAt||0)});
@@ -1288,12 +1312,12 @@ document.addEventListener("submit",function(e){
     if(!fd.get("agree")){toast("Нужно согласие с условиями",1);btn.disabled=false;return}
     var nm=String(fd.get("name")).trim();
     job=registerAccount(fd.get("email"),String(fd.get("password")||""),nm).then(function(uid){
-      var row={name:nm,phone:String(fd.get("phone")).trim(),specs:sp0,skills:String(fd.get("skills")||"").trim(),district:String(fd.get("district")||"").trim(),exp:String(fd.get("exp")||"").trim(),about:String(fd.get("about")||"").trim(),status:"pending",note:"",createdAt:Date.now(),userId:uid};
+      var row={name:nm,phone:String(fd.get("phone")).trim(),specs:sp0,skills:String(fd.get("skills")||"").trim(),district:String(fd.get("district")||"").trim(),orgName:String(fd.get("orgName")||"").trim().slice(0,80),address:String(fd.get("address")||"").trim().slice(0,120),exp:String(fd.get("exp")||"").trim(),about:String(fd.get("about")||"").trim(),status:"pending",note:"",createdAt:Date.now(),userId:uid};
       return gSet("masters",uid,row)}).then(function(){toast("Готово! Анкета отправлена на проверку");if(!mode()){location.hash="#/master";setTimeout(function(){location.reload()},300)}else location.hash="#/master"});
   }else if(kind==="master"){
     var specs=SPECS.length>1?fd.getAll("spec"):[SPECS[0]];if(!specs.length){toast("Выберите хотя бы одну специальность",1);btn.disabled=false;return}
     if(!fd.get("agree")){toast("Нужно согласие с условиями",1);btn.disabled=false;return}
-    job=myMaster().then(function(old){var row={name:String(fd.get("name")).trim(),phone:String(fd.get("phone")).trim(),specs:specs,district:String(fd.get("district")||"").trim(),exp:String(fd.get("exp")||"").trim(),skills:String(fd.get("skills")||"").trim(),about:String(fd.get("about")||"").trim(),status:old?old.status:"pending",note:old&&old.note||"",createdAt:old?old.createdAt:Date.now(),userId:u.uid};
+    job=myMaster().then(function(old){var row={name:String(fd.get("name")).trim(),phone:String(fd.get("phone")).trim(),specs:specs,district:String(fd.get("district")||"").trim(),orgName:String(fd.get("orgName")||"").trim().slice(0,80),address:String(fd.get("address")||"").trim().slice(0,120),exp:String(fd.get("exp")||"").trim(),skills:String(fd.get("skills")||"").trim(),about:String(fd.get("about")||"").trim(),status:old?old.status:"pending",note:old&&old.note||"",createdAt:old?old.createdAt:Date.now(),userId:u.uid};
       return gSet("masters",u.uid,row)}).then(function(){toast("Анкета сохранена");location.hash="#/master"});
   }else if(kind==="order"){
     var price=Math.round(Number(String(fd.get("price")).replace(/\s/g,"")));
@@ -1310,7 +1334,7 @@ document.addEventListener("submit",function(e){
 });
 
 /* ===== БАЛЛЫ (внутренняя валюта организаций) ===== */
-document.addEventListener("change",function(e){var s0=e.target;if(s0&&s0.tagName==="SELECT"&&s0.value==="master"&&/^\/(register|signup)/.test(path())){location.hash="#/masters/new";return}var s=e.target;if(s&&s.name==="spec"&&s.tagName==="SELECT"){var f=s.form,a=f&&f.querySelector("[data-auto]");if(a)a.style.display=AUTO.indexOf(s.value)>=0?"block":"none"}});
+document.addEventListener("change",function(e){var s0=e.target;if(s0&&s0.tagName==="SELECT"&&s0.hasAttribute("data-nav")){location.hash=s0.value;return}if(s0&&s0.tagName==="SELECT"&&s0.value==="master"&&/^\/(register|signup)/.test(path())){location.hash="#/masters/new";return}var s=e.target;if(s&&s.name==="spec"&&s.tagName==="SELECT"){var f=s.form,a=f&&f.querySelector("[data-auto]");if(a)a.style.display=AUTO.indexOf(s.value)>=0?"block":"none"}});
 var ALPH="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 function genCode(){var s="";for(var i=0;i<6;i++)s+=ALPH.charAt(Math.floor(Math.random()*ALPH.length));return s}
 function up(s){return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"")}
@@ -1611,7 +1635,7 @@ var QD=(function(){
 })();
 function qrDecodeCanvas(cv){return QD.decode(cv.getContext("2d").getImageData(0,0,cv.width,cv.height))}
 
-function openScanner(onRaw,title){
+function openWebScanner(onRaw,title){
   var ov=document.createElement("div");ov.style.cssText="position:fixed;inset:0;z-index:9998;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;color:#fff;font:15px system-ui,sans-serif;text-align:center";
   ov.innerHTML='<div id="qp-msg" style="margin-bottom:10px">'+(title||"Наведите камеру на QR")+'</div><video playsinline muted style="width:100%;max-width:420px;border-radius:12px;background:#222"></video><div class="qm-row" style="margin-top:14px;justify-content:center;gap:10px"><label class="btn btn-secondary" style="cursor:pointer">📷 Сфотографировать QR<input type="file" accept="image/*" capture="environment" hidden></label><button class="btn btn-secondary" id="qp-x" type="button">Закрыть</button></div>';
   document.body.appendChild(ov);var stream=null,stop=false,msg=ov.querySelector("#qp-msg");
@@ -2162,7 +2186,7 @@ document.addEventListener("click",function(e){var t=e.target.closest&&e.target.c
   setTimeout(function(){busy=0;cur="";sched()},400)},true);
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&path()==="/cart"){busy=0;cur="";sched()}});
 document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("[data-cartsend]");if(a&&noSize(cartGroups()[a.getAttribute("data-cartsend")]||[])){e.preventDefault();e.stopPropagation();toast("Выберите размер у товаров",1);return}if(a){var id=a.getAttribute("data-cartsend");SENT[id]=sig(cartGroups()[id]||[]);sentSave();setTimeout(function(){a.textContent="✓ Отправлено · отправить снова"},200)}});
-function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 09.11 08:09";f.appendChild(d)}
+function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 09.11 18:39";f.appendChild(d)}
 function enhNavCart(){
   var bn=document.querySelector(".bottomnav");if(bn){var a=bn.querySelector("a[data-qmnc]")||bn.querySelector('a[href="#/map"]');
     if(a){if(!a.hasAttribute("data-qmnc")){a.setAttribute("data-qmnc","1");a.setAttribute("href","#/cart");a.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();location.hash="#/cart";busy=0;cur="";sched()},true);a.innerHTML='<span class="nav-badge"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"></circle><circle cx="18" cy="20" r="1.5"></circle><path d="M3 4h2.5l2.2 11h10.6l2-8H6.5"></path></svg></span>Корзина'}
@@ -2413,7 +2437,7 @@ function ntKey(k){var u=me();return "qm:nt:"+(u?u.uid:"")+":"+k}
 function ntSeen(k){try{var v=localStorage.getItem(ntKey(k));if(v==null){v=String(Date.now());localStorage.setItem(ntKey(k),v)}return Number(v)}catch(e){return Date.now()}}
 function ntMark(k){try{localStorage.setItem(ntKey(k),String(Date.now()))}catch(e){}NT[k]=0;updNT()}
 function ntTotal(){return (NT.cl||0)+(NT.so||0)+(NT.mg||0)+(NT.adm||0)+(NEWC||0)+(SON||0)+(PN||0)+(PNA||0)}
-async function ntCheck(force){var u=me();
+async function ntCheck(force){var u=me();try{pushInit()}catch(e){}
   if(!u){NT={cl:0,so:0,mg:0,adm:0};NTR=null;updNT();return}
   if(document.hidden)return;if(!force&&Date.now()-NTL<60000)return;NTL=Date.now();
   try{
@@ -2438,11 +2462,86 @@ function hubHtml(){var u=me();if(!u)return '';var r=NTR||{},m=r.master,h='',nw=[
     (r.org?hubTile('#/points/cash','💳','Касса','Баллы клиента по QR',0):'')+
     (r.org?hubTile('#/points/rules','🎯','Лояльность','Проценты и условия',0):'')+
     (r.mgr?hubTile('#/manager','🤝','Менеджер','Переходы и выплаты',NT.mg):'')+'</div>';
+  if(!isStandalone())h+='<div class="qm-hubh">Приложение</div><div class="qm-hub"><a class="qm-tile" href="#/download"><span class="ic">📲</span><b>Скачать приложение</b><small>Android, iPhone</small></a></div>';
+  h+='<div class="qm-hubh">Данные</div><div class="qm-hub"><a class="qm-tile" href="#/privacy"><span class="ic">🔒</span><b>Конфиденциальность</b><small>Какие данные храним</small></a><a class="qm-tile" href="javascript:void(0)" data-act="delAcc"><span class="ic">🗑</span><b>Удалить аккаунт</b><small>Профиль и анкету</small></a></div>';
   if(u.admin)h+='<div class="qm-hubh">Администратор</div><div class="qm-hub">'+hubTile('#/admin/masters','🛠','Проверки','Мастера, отзывы, партнёры',NT.adm+PNA)+hubTile('#/admin/shops','💰','Комиссии','Магазины и оплаты',0)+hubTile('#/admin/managers','🤝','Менеджеры','Условия и выплаты',0)+hubTile('#/admin/points','📊','Баллы','Все начисления',0)+'</div>';
   return h}
 function updNT(){var c=document.querySelector("[data-qmp]");if(c&&me()){var h=hubHtml();if(c.__h!==h){c.innerHTML=h;c.__h=h}}try{applyBadge()}catch(e){}}
 ["/orders:cl","/shop-orders:so","/manager:mg"].forEach(function(s){var a=s.split(":"),f=VIEWS[a[0]];if(f)VIEWS[a[0]]=async function(){try{ntMark(a[1])}catch(e){}return f.apply(this,arguments)}});
 function ntStart(){if(NTP)return;NTP=1;setTimeout(function(){ntCheck(true)},1200);setInterval(function(){ntCheck(false)},60000);document.addEventListener("visibilitychange",function(){if(!document.hidden)ntCheck(false)})}
+
+/* ===== УСТАНОВКА ПРИЛОЖЕНИЯ (PWA) ===== */
+var DIP=null;window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();DIP=e});
+window.addEventListener("appinstalled",function(){DIP=null});
+function isStandalone(){return !!window.Capacitor||(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true}
+function isIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent)}
+ACT.install=async function(){
+  if(DIP){DIP.prompt();try{await DIP.userChoice}catch(e){}DIP=null;return}
+  alert(isIOS()?"Установка на iPhone:\n1. Откройте сайт в Safari.\n2. Нажмите «Поделиться» (квадрат со стрелкой).\n3. Выберите «На экран Домой».\nИконка QALA появится на главном экране.":"Установка на Android:\n1. Откройте меню браузера (три точки).\n2. Выберите «Установить приложение» или «Добавить на главный экран».\nИконка QALA появится на экране телефона.")};
+if("serviceWorker" in navigator&&location.protocol.indexOf("http")===0){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
+
+ACT.delAcc=async function(){var u=me();if(!u)return;
+  if(prompt("Удаление аккаунта необратимо: будут удалены ваш профиль, анкета мастера и привязки. Организации и товары удаляются отдельно (или через администратора). Для подтверждения введите слово УДАЛИТЬ")!=="УДАЛИТЬ")return;
+  var f=mode();
+  if(f){var cu=f.au.currentUser;if(!cu)throw new Error("Войдите заново и повторите");var pw=prompt("Введите пароль от аккаунта для подтверждения");if(!pw)return;
+    await f.X.reauthenticateWithCredential(cu,f.X.EmailAuthProvider.credential(cu.email,pw));
+    var ops=[];["masters","refLinks","users"].forEach(function(n){ops.push({t:"del",n:n,id:u.uid})});
+    for(var i=0;i<ops.length;i++){try{await gDel(ops[i].n,ops[i].id)}catch(e){console.warn("del",ops[i].n,e)}}
+    await f.X.deleteUser(cu)}
+  else{try{var us=lsUsers().filter(function(x){return x.id!==u.uid});localStorage.setItem("qala:db:users",JSON.stringify(us));var ac=JSON.parse(localStorage.getItem("qala:accounts")||"{}");if(Array.isArray(ac))ac=ac.filter(function(a){return a.id!==u.uid&&a.uid!==u.uid});else Object.keys(ac).forEach(function(k){if(ac[k]&&(ac[k].uid===u.uid||ac[k].id===u.uid))delete ac[k]});localStorage.setItem("qala:accounts",JSON.stringify(ac));localStorage.removeItem("qala:session")}catch(e){}}
+  toast("Аккаунт удалён");location.hash="#/";setTimeout(function(){location.reload()},600)};
+
+/* ===== РЕЖИМ ПРИЛОЖЕНИЯ: ощущается как приложение, а не как сайт ===== */
+var CAP=!!(window.Capacitor&&(Capacitor.isNativePlatform?Capacitor.isNativePlatform():true)),APPM=CAP||isStandalone();
+function CP(n){return window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins[n]}
+function haptic(){try{var H=CP("Haptics");if(H&&H.impact)H.impact({style:"LIGHT"});else if(APPM&&navigator.vibrate)navigator.vibrate(6)}catch(e){}}
+function openScanner(onRaw,title){var BS=CAP&&CP("BarcodeScanner");if(!BS)return openWebScanner(onRaw,title);
+  return Promise.resolve(BS.scan({formats:["QR_CODE"]})).then(function(r){var b=r&&r.barcodes&&r.barcodes[0];if(b&&b.rawValue&&!onRaw(b.rawValue))toast("Этот QR не подходит",1)}).catch(function(e){if(/cancel/i.test(String(e&&e.message||e)))return;return openWebScanner(onRaw,title)})}
+if(APPM){
+  document.documentElement.classList.add("qm-app");
+  document.addEventListener("click",function(e){if(e.target.closest&&e.target.closest(".btn,.qm-tile,nav a,.tab,.qm-cc,button"))haptic()},true);
+  /* свайп вниз = обновить */
+  var PTR={y:0,on:0,d:0,el:null};
+  function ptrEl(){if(!PTR.el){var d=document.createElement("div");d.id="qm-ptr";document.body.appendChild(d);PTR.el=d}return PTR.el}
+  document.addEventListener("touchstart",function(e){PTR.on=(window.scrollY<=0&&e.touches.length===1&&!(e.target.closest&&e.target.closest(".qm-car,select,textarea,input,#qm-ov,[data-zoom]")));PTR.y=e.touches[0].clientY;PTR.d=0},{passive:true});
+  document.addEventListener("touchmove",function(e){if(!PTR.on)return;var d=e.touches[0].clientY-PTR.y;PTR.d=d;var el=ptrEl();if(d>18){el.style.display="block";el.style.transform="translate(-50%,"+Math.min(d,110)/2+"px)";el.textContent=d>90?"Отпустите, чтобы обновить":"Потяните вниз"}else el.style.display="none"},{passive:true});
+  document.addEventListener("touchend",function(){if(!PTR.on)return;var el=ptrEl();el.style.display="none";if(PTR.d>90){haptic();try{window.__qcClear&&window.__qcClear()}catch(e){}render(true);ntCheck(true);toast("Обновлено")}PTR.on=0},{passive:true});
+}
+if(CAP){
+  try{var AP=CP("App");if(AP&&AP.addListener)AP.addListener("backButton",function(){if(location.hash&&location.hash!=="#/"&&location.hash!=="#"&&history.length>1)history.back();else if(AP.exitApp)AP.exitApp()})}catch(e){}
+  try{var SB=CP("StatusBar");if(SB){SB.setStyle&&SB.setStyle({style:"LIGHT"});SB.setBackgroundColor&&SB.setBackgroundColor({color:"#ffffff"})}}catch(e){}
+  setTimeout(function(){try{var SS=CP("SplashScreen");if(SS&&SS.hide)SS.hide()}catch(e){}},600);
+}
+var PUSHU="";
+async function pushInit(){var PN=CP("PushNotifications"),u=me();if(!CAP||!PN||!u||PUSHU===u.uid)return;PUSHU=u.uid;
+  try{var st=await PN.checkPermissions();if(st.receive==="prompt"||st.receive==="prompt-with-rationale")st=await PN.requestPermissions();if(st.receive!=="granted")return;
+    PN.addListener("registration",function(t){var tk=String(t.value||""),h=0;for(var i=0;i<tk.length;i++)h=(h*31+tk.charCodeAt(i))>>>0;
+      Promise.resolve(gSet("pushTokens",u.uid+"_"+h.toString(36),{uid:u.uid,token:tk,platform:(Capacitor.getPlatform&&Capacitor.getPlatform())||"app",updatedAt:Date.now()})).catch(function(){})});
+    PN.addListener("pushNotificationReceived",function(n){toast("🔔 "+((n.title||"")+(n.body?": "+n.body:"")));ntCheck(true)});
+    PN.addListener("pushNotificationActionPerformed",function(a){var r=a&&a.notification&&a.notification.data&&a.notification.data.route;if(r)location.hash=r;ntCheck(true)});
+    await PN.register()}catch(e){console.warn("push",e)}}
+
+/* ===== СКАЧАТЬ ПРИЛОЖЕНИЕ ===== */
+var APP_VER=1,APK_URL="https://github.com/cabelNL/Qalapvl/releases/latest/download/qala-pvl.apk",SITE_URL="https://cabelnl.github.io/Qalapvl/";
+VIEWS["/download"]=async function(){
+  var ios=isIOS(),and=/android/i.test(navigator.userAgent),h=head("Скачать приложение","/profile");
+  function step(n,t){return '<div style="display:flex;flex-wrap:nowrap;gap:10px;align-items:flex-start;margin-top:10px"><b class="qm-num">'+n+'</b><span style="flex:1;line-height:1.4">'+t+'</span></div>'}
+  var A='<div class="qm-card" style="margin-top:10px"><div class="qm-row" style="gap:10px"><span style="font-size:30px">🤖</span><div><b style="font-size:17px">Android</b><div class="qm-muted">Файл приложения (APK)</div></div></div><a class="btn btn-primary" style="margin-top:12px;display:flex;align-items:center;justify-content:center;min-height:48px" href="'+APK_URL+'" download>⬇ Скачать для Android</a>'+
+    step(1,'Нажмите «Скачать» и дождитесь загрузки файла <b>qala-pvl.apk</b>.')+step(2,'Откройте файл. Телефон попросит разрешить установку из этого источника: нажмите «Настройки» и включите разрешение.')+step(3,'Вернитесь и нажмите «Установить». Если Google Play Protect предупредит, выберите «Всё равно установить».')+step(4,'Откройте QALA PVL и войдите в свой аккаунт.')+'<div class="qm-muted" style="margin-top:8px">Приложение безопасно: это та же QALA PVL, только в виде файла. Данные хранятся в вашем аккаунте.</div></div>';
+  var I='<div class="qm-card" style="margin-top:10px"><div class="qm-row" style="gap:10px"><span style="font-size:30px">🍎</span><div><b style="font-size:17px">iPhone</b><div class="qm-muted">Установка с экрана Safari</div></div></div>'+
+    step(1,'Откройте этот сайт в <b>Safari</b>.')+step(2,'Нажмите «Поделиться» (квадрат со стрелкой внизу).')+step(3,'Выберите «На экран Домой» и нажмите «Добавить».')+step(4,'Иконка QALA PVL появится на главном экране и откроется как приложение.')+'</div>';
+  var W='<div class="qm-card" style="margin-top:10px"><div class="qm-row" style="gap:10px"><span style="font-size:30px">🌐</span><div><b style="font-size:17px">Установить прямо из браузера</b><div class="qm-muted">Chrome, Edge, Samsung Internet</div></div></div><button class="btn btn-secondary" style="margin-top:12px;width:100%" data-act="install">📲 Установить приложение</button><div class="qm-muted" style="margin-top:6px">Если кнопка не сработала: меню браузера → «Установить приложение» или «Добавить на главный экран».</div></div>';
+  h+='<div class="qm-muted">Приложение открывается на весь экран, быстрее сайта и присылает уведомления о заказах и заявках.</div>';
+  h+=ios?I+W+A:A+W+I;
+  h+='<div class="qm-card" style="margin-top:10px"><b>Отправить ссылку другу</b><div class="qm-muted" style="margin:4px 0 8px">'+esc(SITE_URL+"#/download")+'</div><button class="btn btn-ghost" data-act="shareApp">Поделиться ссылкой</button></div>';
+  return h};
+ACT.shareApp=async function(){var link=SITE_URL+"#/download",t="Скачайте приложение QALA PVL: организации, товары и мастера Павлодара";try{if(navigator.share){await navigator.share({title:"QALA PVL",text:t,url:link});return}}catch(e){if(e&&e.name==="AbortError")return}try{await navigator.clipboard.writeText(t+" "+link);toast("Ссылка скопирована")}catch(e){prompt("Скопируйте ссылку",link)}};
+/* проверка новой версии внутри приложения */
+if(CAP){setTimeout(function(){fetch(SITE_URL+"version.json?"+Date.now(),{cache:"no-store"}).then(function(r){return r.json()}).then(function(j){
+  if(j&&j.version>APP_VER&&!document.getElementById("qm-upd")){var d=document.createElement("div");d.id="qm-upd";d.innerHTML='<span>🆕 Вышла новая версия'+(j.notes?': '+esc(j.notes):'')+'</span><a href="'+esc(j.apk||APK_URL)+'" target="_blank" rel="noopener">Скачать</a><b onclick="this.parentNode.remove()">×</b>';document.body.appendChild(d)}}).catch(function(){})},4000)}
+
+document.addEventListener("change",function(e){var c=e.target;if(c&&c.type==="checkbox"&&c.closest&&c.closest(".qm-ms")){var d=c.closest(".qm-ms"),v=[].slice.call(d.querySelectorAll("input:checked")).map(function(x){return x.value});d.querySelector(".qm-sv").textContent=v.length?v.join(", "):"Выберите из списка"}});
+document.addEventListener("click",function(e){var t=e.target;if(t&&t.hasAttribute&&t.hasAttribute("data-msdone")){var d=t.closest("details");if(d)d.open=false;return}[].forEach.call(document.querySelectorAll("details.qm-ms[open]"),function(d){if(!d.contains(t))d.open=false})});
 var BUYP=0;
 var BUYACT=1,BUYL=0;
 async function checkBuyer(){var u=me();if(!u||document.hidden)return;if(!BUYACT&&Date.now()-BUYL<300000)return;BUYL=Date.now();
