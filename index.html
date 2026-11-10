@@ -873,6 +873,8 @@ sched();
 .qm-rate{font-size:12px;color:#5a6a7e;display:block}
 .qm-ph{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}.qm-ph img{width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid #e0e6ee;cursor:pointer}.qm-entry{display:grid;gap:10px;grid-template-columns:1fr;margin:10px 0}@media(min-width:560px){.qm-entry{grid-template-columns:1fr 1fr}}.qm-entry .qm-card{display:flex;flex-direction:column;gap:6px}.qm-entry h3{margin:0}
 .qm-toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:#15202e;color:#fff;padding:10px 16px;border-radius:10px;z-index:9999;font:14px system-ui,sans-serif;max-width:90%}
+#qa-ov{position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px}.qa-box{background:#fff;border-radius:20px;padding:20px;width:100%;max-width:380px;box-shadow:0 20px 50px rgba(0,0,0,.3)}.qa-box h3{margin:0 0 6px;font-size:20px}.qa-h{margin:0 0 12px;color:#5a6a7e;font-size:14px;line-height:1.4}.qa-er{color:#b42318;font-size:13px;min-height:18px;margin:2px 0 8px}#qa-alt{margin:14px 0 96px;display:flex;flex-direction:column;gap:8px}.qa-b{width:100%;min-height:48px}.qa-or{display:flex;align-items:center;gap:10px;color:#8a97a8;font-size:13px}.qa-or:before,.qa-or:after{content:"";flex:1;height:1px;background:#dfe5ee}.qa-g{font-weight:800;color:#4285f4;margin-right:4px}
+#qp-ov{position:fixed;inset:0;z-index:10001;background:linear-gradient(160deg,#0f1b33,#1b3a6b);display:flex;align-items:center;justify-content:center;color:#fff;font-family:system-ui,sans-serif}.qp-w{width:100%;max-width:340px;padding:20px;text-align:center}.qp-t{font-size:22px;font-weight:800}.qp-s{font-size:14px;opacity:.75;margin-top:6px;min-height:20px}.qp-s.err{color:#ffb4a8;opacity:1}.qp-d{display:flex;justify-content:center;gap:16px;margin:26px 0}.qp-d i{width:16px;height:16px;border-radius:50%;border:2px solid #fff;display:block}.qp-d i.on{background:#fff}.qp-d.sh{animation:qpsh .4s}@keyframes qpsh{20%,60%{transform:translateX(-10px)}40%,80%{transform:translateX(10px)}}.qp-k{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;justify-items:center}.qp-k button{width:76px;height:76px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:#fff;font-size:28px;font-weight:600}.qp-k button:active{background:rgba(255,255,255,.3)}.qp-l{margin-top:22px;background:none;border:0;color:#cfe0ff;font-size:15px;text-decoration:underline}
 .qm-toast.err{background:#b42318}
 .qm-ghost{opacity:.9}
 /* ===== СОВРЕМЕННЫЙ ДИЗАЙН ===== */
@@ -1762,8 +1764,8 @@ function prevHtml(c){return '<div class="qm-row qm-between"><span>Сумма</sp
 async function commit(ops){window.__qcClear&&window.__qcClear();try{return await commit_(ops)}finally{window.__qcClear&&window.__qcClear()}}
 async function commit_(ops){
   var f=mode();
-  if(f){var b=f.X.writeBatch(f.fs);ops.forEach(function(o){var r=f.X.doc(f.fs,o.n,o.id);if(o.t==="set"){var d=Object.assign({},o.data);delete d.id;b.set(r,d)}else b.update(r,o.p)});await b.commit();return}
-  for(var i=0;i<ops.length;i++){var o=ops[i];if(o.t==="set")await gSet(o.n,o.id,o.data);else await gPatch(o.n,o.id,o.p)}
+  if(f){var b=f.X.writeBatch(f.fs);ops.forEach(function(o){var r=f.X.doc(f.fs,o.n,o.id);if(o.t==="set"){var d=Object.assign({},o.data);delete d.id;b.set(r,d)}else if(o.t==="del")b.delete(r);else b.update(r,o.p)});await b.commit();return}
+  for(var i=0;i<ops.length;i++){var o=ops[i];if(o.t==="set")await gSet(o.n,o.id,o.data);else if(o.t==="del")await gDel(o.n,o.id);else await gPatch(o.n,o.id,o.p)}
 }
 function audit(org,u,action,ref,extra){return {t:"set",n:"laudit",id:nid(),data:Object.assign({orgId:org,actor:u.uid,actorName:u.name,action:action,ref:ref||"",createdAt:Date.now()},extra||{})}}
 function orgNav(org,act){return '<div class="qm-tabs">'+[["cash","Касса"],["rules","Программа"],["org","Вручную"]].map(function(t){return '<a href="#/points/'+t[0]+'?o='+esc(org.id)+'"'+(t[0]===act?' class="on"':'')+'>'+t[1]+'</a>'}).join("")+'</div>'}
@@ -1986,6 +1988,121 @@ function enhLogin(){
   if(!em.dataset.qmq){em.dataset.qmq=1;em.setAttribute("autocomplete","username");var last="";try{last=localStorage.getItem("qm:lastEmail")||""}catch(x){}if(last&&!em.value){setVal(em,last);setTimeout(function(){pw.focus()},50)}}
   if(!pw.dataset.qmq){pw.dataset.qmq=1;var b=document.createElement("button");b.type="button";b.className="btn btn-ghost btn-sm";b.textContent="👁 Показать пароль";b.style.marginTop="6px";b.addEventListener("click",function(){var s=pw.type==="password";pw.type=s?"text":"password";b.textContent=s?"🙈 Скрыть пароль":"👁 Показать пароль"});(pw.closest("label")||pw).insertAdjacentElement("afterend",b)}
 }
+/* вход: Google, телефон (SMS), восстановление пароля по телефону */
+var QA_PHONE=false;/* вход по SMS отключён до отдельного решения */
+var QA={conf:null,rc:null,mode:"login",phone:"",role:"",t:0};
+function qaPhone(v){var d=String(v||"").replace(/\D/g,"");if(d.length===11&&d[0]==="8")d="7"+d.slice(1);if(d.length===10)d="7"+d;return d.length===11&&d[0]==="7"?"+"+d:""}
+function qaNative(){try{return !!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform())}catch(e){return false}}
+function myPhone(){var f=mode();return f&&f.au.currentUser&&f.au.currentUser.phoneNumber||""}
+function qaOv(html){var o=$("#qa-ov");if(!o){o=document.createElement("div");o.id="qa-ov";document.body.appendChild(o);o.addEventListener("click",function(e){if(e.target===o)qaClose()})}o.innerHTML='<div class="qa-box">'+html+'</div>';return o}
+function qaClose(){var o=$("#qa-ov");if(o)o.remove();clearInterval(QA.t);if(QA.rc){try{QA.rc.clear()}catch(e){}QA.rc=null}var d=$("#qa-rc");if(d)d.remove();QA.conf=null}
+function qaEr(m){var e=$("#qa-er");if(e)e.textContent=m}
+function qaErr(e){var c=e&&e.code||"",m={"auth/invalid-phone-number":"Неверный номер телефона","auth/missing-phone-number":"Введите номер телефона","auth/too-many-requests":"Слишком много попыток. Подождите немного и повторите","auth/invalid-verification-code":"Неверный код из SMS","auth/code-expired":"Код устарел, запросите новый","auth/quota-exceeded":"Лимит SMS на сегодня исчерпан, попробуйте позже","auth/captcha-check-failed":"Проверка не пройдена, повторите","auth/credential-already-in-use":"Этот номер уже привязан к другому аккаунту","auth/provider-already-linked":"К аккаунту уже привязан номер","auth/operation-not-allowed":"Этот способ входа не включён в Firebase (Authentication → Sign-in method)","auth/unauthorized-domain":"Адрес сайта не добавлен в Firebase (Authentication → Settings → Authorized domains)","auth/requires-recent-login":"Войдите заново и повторите","auth/weak-password":"Слишком простой пароль","auth/network-request-failed":"Нет связи с интернетом","auth/user-disabled":"Аккаунт заблокирован","auth/billing-not-enabled":"SMS не включены: в Firebase нужен тариф Blaze","auth/app-not-authorized":"Сайт не разрешён для SMS-входа в Firebase"};return m[c]||errText(e)}
+async function qaSaveDoc(u,always,onCreate){var f=mode(),X=f.X,ref=X.doc(f.fs,"users",u.uid),s=null;try{s=await X.getDoc(ref)}catch(e){}
+  var ex=s&&s.exists(),d=Object.assign({},always||{});
+  if(!ex)d=Object.assign({email:u.email||"",displayName:u.displayName||"",role:"visitor",blocked:false,createdAt:Date.now()},onCreate||{},d);
+  try{await X.setDoc(ref,d,{merge:true})}catch(e){console.warn(e)}return ex}
+function qaDone(msg,hash){qaClose();toast(msg);if(/^\/(login|register|signup)/.test(path())||hash)location.hash=hash||"#/"}
+function qaRC(f){if(QA.rc){try{QA.rc.clear()}catch(e){}QA.rc=null}var d=$("#qa-rc");if(d)d.remove();d=document.createElement("div");d.id="qa-rc";document.body.appendChild(d);QA.rc=new f.X.RecaptchaVerifier(f.au,d,{size:"invisible"});return QA.rc}
+function qaStep1(){var m=QA.mode,t=m==="recover"?"Восстановление пароля":m==="link"?"Привязать телефон":m==="register"?"Регистрация по телефону":"Вход по телефону",
+  h=m==="recover"?"Отправим SMS-код на номер, привязанный к вашему аккаунту. После входа можно задать новый пароль.":m==="link"?"Номер нужен для входа по SMS и восстановления пароля.":"Отправим SMS с кодом. Пароль не нужен.";
+  qaOv('<h3>'+t+'</h3><p class="qa-h">'+h+'</p><label class="qm-f">Номер телефона<input id="qa-ph" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 777 000 00 00" maxlength="18" value="'+esc(QA.phone||"+7 ")+'"></label><div id="qa-er" class="qa-er"></div><button id="qa-go" class="btn btn-primary" style="width:100%">Получить код</button><button id="qa-x" class="btn btn-ghost" style="width:100%;margin-top:6px">Отмена</button>');
+  $("#qa-go").onclick=qaSend;$("#qa-x").onclick=qaClose;$("#qa-ph").addEventListener("keydown",function(e){if(e.key==="Enter")qaSend()});setTimeout(function(){var i=$("#qa-ph");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},60)}
+async function qaSend(){var f=mode(),ph=qaPhone($("#qa-ph").value);if(!ph){qaEr("Введите номер в формате +7 777 000 00 00");return}
+  var b=$("#qa-go");b.disabled=true;b.textContent="Отправляем…";qaEr("");
+  try{var rc=qaRC(f);if(QA.mode==="link"){var cu=f.au.currentUser;if(!cu)throw new Error("Сначала войдите в аккаунт");QA.conf=await f.X.linkWithPhoneNumber(cu,ph,rc)}else QA.conf=await f.X.signInWithPhoneNumber(f.au,ph,rc);QA.phone=ph;qaStep2()}
+  catch(e){qaEr(qaErr(e));var b2=$("#qa-go");if(b2){b2.disabled=false;b2.textContent="Получить код"}if(QA.rc){try{QA.rc.clear()}catch(x){}QA.rc=null}}}
+function qaStep2(){qaOv('<h3>Введите код</h3><p class="qa-h">Отправили SMS на '+esc(QA.phone)+'</p><label class="qm-f">Код из SMS<input id="qa-cd" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" style="letter-spacing:6px;font-size:22px;text-align:center"></label><div id="qa-er" class="qa-er"></div><button id="qa-ok" class="btn btn-primary" style="width:100%">Подтвердить</button><button id="qa-re" class="btn btn-ghost" style="width:100%;margin-top:6px" disabled></button>');
+  var s=60,re=$("#qa-re");function tick(){re.textContent=s>0?"Отправить код ещё раз через "+s+" с":"Отправить код ещё раз";re.disabled=s>0}tick();clearInterval(QA.t);QA.t=setInterval(function(){s--;if(!$("#qa-re")){clearInterval(QA.t);return}tick();if(s<=0)clearInterval(QA.t)},1000);
+  re.onclick=qaStep1;$("#qa-ok").onclick=qaConfirm;$("#qa-cd").addEventListener("keydown",function(e){if(e.key==="Enter")qaConfirm()});setTimeout(function(){var i=$("#qa-cd");if(i)i.focus()},60)}
+async function qaConfirm(){var f=mode(),c=($("#qa-cd").value||"").replace(/\D/g,"");if(c.length<6){qaEr("Введите 6 цифр из SMS");return}
+  var b=$("#qa-ok");b.disabled=true;qaEr("");
+  try{var r=await QA.conf.confirm(c),u=(r&&r.user)||f.au.currentUser;
+    if(QA.mode==="link"){await qaSaveDoc(u,{phone:QA.phone});qaClose();toast("Телефон привязан");updNT();return}
+    var had=await qaSaveDoc(u,{phone:QA.phone},{role:QA.role==="business"?"business":"visitor"});
+    if(!had||!u.displayName){qaName(u,had?"":(QA.mode==="recover"?"Этот номер не был привязан ни к одному аккаунту, поэтому создан новый. Если нужен старый аккаунт, войдите по e-mail и привяжите телефон в профиле.":""));return}
+    if(QA.mode==="recover"&&u.email){qaPw(u);return}
+    qaDone("Вы вошли")}
+  catch(e){qaEr(qaErr(e));var b2=$("#qa-ok");if(b2)b2.disabled=false}}
+function qaName(u,note){qaOv('<h3>Как вас зовут?</h3>'+(note?'<p class="qa-h">'+esc(note)+'</p>':'')+'<label class="qm-f">Имя<input id="qa-nm" autocomplete="name" maxlength="60"></label><div id="qa-er" class="qa-er"></div><button id="qa-sv" class="btn btn-primary" style="width:100%">Готово</button>');
+  var go=async function(){var n=($("#qa-nm").value||"").trim();if(n.length<2){qaEr("Введите имя");return}var b=$("#qa-sv");b.disabled=true;
+    try{await mode().X.updateProfile(u,{displayName:n})}catch(e){}await qaSaveDoc(u,{displayName:n});
+    var go2=QA.mode==="register"&&QA.role==="master"?"#/masters/new":"#/";qaClose();toast("Добро пожаловать, "+n);location.hash=go2;setTimeout(function(){location.reload()},80)};
+  $("#qa-sv").onclick=go;$("#qa-nm").addEventListener("keydown",function(e){if(e.key==="Enter")go()});setTimeout(function(){var i=$("#qa-nm");if(i)i.focus()},60)}
+function qaPw(u){qaOv('<h3>Новый пароль</h3><p class="qa-h">Вы вошли по SMS. Задайте новый пароль для входа по e-mail ('+esc(u.email)+').</p><label class="qm-f">Новый пароль<input id="qa-pw" type="password" autocomplete="new-password"></label><div id="qa-er" class="qa-er"></div><button id="qa-sv" class="btn btn-primary" style="width:100%">Сохранить пароль</button><button id="qa-sk" class="btn btn-ghost" style="width:100%;margin-top:6px">Пропустить</button>');
+  $("#qa-sk").onclick=function(){qaDone("Вы вошли")};
+  $("#qa-sv").onclick=async function(){var pw=$("#qa-pw").value||"";if(pw.length<8||!/[A-Za-zА-Яа-я]/.test(pw)||!/\d/.test(pw)){qaEr("Пароль: минимум 8 символов, буквы и цифры");return}
+    var b=$("#qa-sv");b.disabled=true;try{await mode().X.updatePassword(u,pw);qaDone("Пароль изменён")}catch(e){qaEr(qaErr(e));b.disabled=false}}}
+function qaPhoneOpen(m,role){var f=mode();if(!f){toast("Вход по телефону работает только на сервере с Firebase",true);return}QA.mode=m;QA.role=role||"";QA.phone="";qaStep1()}
+async function qaGoogle(role){var f=mode();if(!f){toast("Вход через Google работает только на сервере с Firebase",true);return}
+  var X=f.X,p=new X.GoogleAuthProvider();p.setCustomParameters({prompt:"select_account"});
+  try{var r=await X.signInWithPopup(f.au,p);await qaSaveDoc(r.user,{},{role:role==="business"?"business":"visitor"});qaDone("Вы вошли через Google",role==="master"?"#/masters/new":"")}
+  catch(e){var c=e&&e.code;if(c==="auth/popup-blocked"||c==="auth/operation-not-supported-in-this-environment"){try{localStorage.setItem("qm:gRole",role||"")}catch(x){}try{await X.signInWithRedirect(f.au,p)}catch(e2){toast(qaErr(e2),true)}return}
+    if(c!=="auth/popup-closed-by-user"&&c!=="auth/cancelled-popup-request")toast(qaErr(e),true)}}
+var QAR=0;function qaRedirect(){if(QAR)return;var f=mode();if(!f||!f.X.getRedirectResult)return;QAR=1;
+  f.X.getRedirectResult(f.au).then(function(r){if(r&&r.user){var role="";try{role=localStorage.getItem("qm:gRole")||"";localStorage.removeItem("qm:gRole")}catch(x){}return qaSaveDoc(r.user,{},{role:role==="business"?"business":"visitor"}).then(function(){if(role==="master")location.hash="#/masters/new"})}}).catch(function(e){if(e&&e.code&&e.code!=="auth/no-auth-event")toast(qaErr(e),true)})}
+function enhAuthAlt(){
+  qaRedirect();var p=path(),isL=p==="/login",isR=/^\/(register|signup)/.test(p),al=$("#qa-alt");
+  if(!isL&&!isR){if(al)al.remove();return}
+  if(!mode()){if(al)al.remove();return}
+  var key=isL?"L":"R";if(al&&al.dataset.k===key&&document.contains(al))return;if(al)al.remove();
+  var main=$("main.page");if(!main)return;var form=main.querySelector("form")||(main.querySelector("input[type=password]")||{}).form;
+  var d=document.createElement("div");d.id="qa-alt";d.dataset.k=key;
+  var nat=qaNative();
+  d.innerHTML='<div class="qa-or"><span>или</span></div>'+
+    (nat?'':'<button type="button" class="btn btn-secondary qa-b" data-qa="google"><span class="qa-g">G</span> '+(isL?"Войти":"Зарегистрироваться")+' через Google</button>')+
+    (QA_PHONE?'<button type="button" class="btn btn-secondary qa-b" data-qa="phone">📱 '+(isL?"Войти по SMS-коду":"Зарегистрироваться по телефону")+'</button>':'')+
+    (isL&&QA_PHONE?'<button type="button" class="btn btn-ghost btn-sm qa-b" data-qa="recover">Забыли пароль? Восстановить по телефону</button>':'');
+  if(form)form.insertAdjacentElement("afterend",d);else main.appendChild(d)}
+document.addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("[data-qa]");if(!b)return;e.preventDefault();var k=b.dataset.qa,isR=/^\/(register|signup)/.test(path()),role="";if(isR){var s=$("main.page select");role=s?s.value:""}
+  if(k==="google")qaGoogle(role);else if(k==="phone")qaPhoneOpen(isR?"register":"login",role);else if(k==="recover")qaPhoneOpen("recover")});
+ACT.phoneLink=function(){qaPhoneOpen("link")};
+/* код быстрого входа (4 цифры, как в Kaspi) */
+var QP={buf:"",mode:"",first:"",att:0,err:"",hid:0,offered:0};
+function qpKey(uid){return "qm:pin:"+uid}
+function qpHas(uid){try{return !!localStorage.getItem(qpKey(uid))}catch(e){return false}}
+function qpHash(uid,pin){return sha("qp:"+uid+":"+pin)}
+function qpUser(){var f=mode();return f&&f.au.currentUser||null}
+function qpClose(){var o=$("#qp-ov");if(o)o.remove();QP.buf="";QP.mode="";QP.err="";QP.first=""}
+function qpRender(){var o=$("#qp-ov");if(!o){o=document.createElement("div");o.id="qp-ov";document.body.appendChild(o)}
+  var m=QP.mode,t=m==="set1"?"Придумайте код":m==="set2"?"Повторите код":(m==="off"||m==="change")?"Введите текущий код":"Введите код",
+    s=QP.err||(m==="unlock"?"Быстрый вход в QALA PVL":m==="set1"?"4 цифры для быстрого входа без пароля":m==="set2"?"Ещё раз для проверки":"Подтвердите, что это вы"),
+    d="",k="";for(var i=0;i<4;i++)d+='<i class="'+(i<QP.buf.length?"on":"")+'"></i>';
+  ["1","2","3","4","5","6","7","8","9","","0","⌫"].forEach(function(x){k+=x===""?'<span></span>':'<button type="button" data-qpk="'+x+'">'+x+'</button>'});
+  var ex=m==="unlock"?'<button type="button" class="qp-l" data-qpa="forgot">Забыли код?</button>':(m==="set1"&&QP.offer?'<button type="button" class="qp-l" data-qpa="skip">Не сейчас</button>':(m==="off"||m==="change"||m==="set1"||m==="set2")?'<button type="button" class="qp-l" data-qpa="cancel">Отмена</button>':"");
+  o.innerHTML='<div class="qp-w"><div class="qp-t">'+t+'</div><div class="qp-s'+(QP.err?" err":"")+'">'+esc(s)+'</div><div class="qp-d" id="qp-d">'+d+'</div><div class="qp-k">'+k+'</div>'+ex+'</div>'}
+function qpShake(){var d=$("#qp-d");if(d){d.classList.add("sh");setTimeout(function(){d.classList.remove("sh")},400)}}
+function qpForget(out){var u=qpUser();if(u){try{localStorage.removeItem(qpKey(u.uid))}catch(e){}}try{localStorage.removeItem("qm:pinuid")}catch(e){}
+  qpClose();if(out){var f=mode();try{f&&f.X.signOut(f.au)}catch(e){}toast("Войдите заново по e-mail, Google или SMS");location.hash="#/login"}}
+async function qpFull(){var u=qpUser();if(!u){qpClose();return}var pin=QP.buf,m=QP.mode;
+  if(m==="set1"){QP.first=pin;QP.buf="";QP.err="";QP.mode="set2";qpRender();return}
+  if(m==="set2"){if(pin!==QP.first){QP.buf="";QP.err="Коды не совпали, попробуйте снова";QP.mode="set1";qpRender();qpShake();return}
+    try{localStorage.setItem(qpKey(u.uid),await qpHash(u.uid,pin));localStorage.setItem("qm:pinuid",u.uid);localStorage.removeItem("qm:pinNo:"+u.uid)}catch(e){toast("Не удалось сохранить код",true);qpClose();return}
+    qpClose();toast("Код быстрого входа включён");updNT();return}
+  var ok=false;try{ok=(await qpHash(u.uid,pin))===localStorage.getItem(qpKey(u.uid))}catch(e){}
+  if(ok){QP.att=0;if(m==="unlock"){qpClose()}else if(m==="off"){qpForget(false);toast("Код быстрого входа отключён");updNT()}else if(m==="change"){QP.buf="";QP.err="";QP.mode="set1";QP.offer=0;qpRender()}return}
+  QP.att++;if(QP.att>=5){QP.att=0;qpForget(true);return}
+  QP.buf="";QP.err="Неверный код. Осталось попыток: "+(5-QP.att);qpRender();qpShake()}
+function qpStart(m,offer){QP.mode=m;QP.buf="";QP.err="";QP.first="";QP.offer=offer?1:0;qpRender()}
+document.addEventListener("click",function(e){var k=e.target.closest&&e.target.closest("[data-qpk]");
+  if(k){var v=k.dataset.qpk;if(v==="⌫")QP.buf=QP.buf.slice(0,-1);else if(QP.buf.length<4)QP.buf+=v;QP.err="";qpRender();if(QP.buf.length===4)setTimeout(qpFull,100);return}
+  var a=e.target.closest&&e.target.closest("[data-qpa]");if(!a)return;var x=a.dataset.qpa;
+  if(x==="forgot"){qpForget(true)}else if(x==="skip"){var u=qpUser();if(u)try{localStorage.setItem("qm:pinNo:"+u.uid,"1")}catch(e2){}qpClose()}else if(x==="cancel")qpClose()});
+function enhPinOffer(){if(QP.offered||$("#qp-ov")||$("#qa-ov"))return;var u=qpUser();if(!u||qpHas(u.uid))return;if(/^\/(login|register|signup)/.test(path()))return;
+  try{if(localStorage.getItem("qm:pinNo:"+u.uid))return}catch(e){return}
+  QP.offered=1;setTimeout(function(){var u2=qpUser();if(u2&&!qpHas(u2.uid)&&!$("#qp-ov")&&!$("#qa-ov"))qpStart("set1",true)},1500)}
+ACT.pinMenu=function(){var u=qpUser();if(!u){toast("Сначала войдите в аккаунт",true);return}
+  if(!qpHas(u.uid)){qpStart("set1",false);return}
+  qaOv('<h3>Код быстрого входа</h3><p class="qa-h">Код включён на этом устройстве.</p><button class="btn btn-primary" id="qp-ch" style="width:100%">Сменить код</button><button class="btn btn-secondary" id="qp-of" style="width:100%;margin-top:6px">Отключить код</button><button class="btn btn-ghost" id="qp-cl" style="width:100%;margin-top:6px">Закрыть</button>');
+  $("#qp-ch").onclick=function(){qaClose();qpStart("change")};$("#qp-of").onclick=function(){qaClose();qpStart("off")};$("#qp-cl").onclick=qaClose};
+function qpBoot(){var uid=null;try{uid=localStorage.getItem("qm:pinuid")}catch(e){}if(!uid||!qpHas(uid))return;QP.att=0;qpStart("unlock");
+  var n=0,iv=setInterval(function(){n++;var f=mode();
+    if(f){clearInterval(iv);var chk=function(){var u=f.au.currentUser;if(!u||u.uid!==uid){if($("#qp-ov")&&QP.mode==="unlock")qpClose()}};
+      if(f.au.authStateReady)f.au.authStateReady().then(chk,chk);else setTimeout(chk,3000)}
+    else if(n>40){clearInterval(iv);if(QP.mode==="unlock")qpClose()}},300)}
+document.addEventListener("visibilitychange",function(){if(document.hidden){QP.hid=Date.now();return}
+  var u=qpUser();if(u&&qpHas(u.uid)&&QP.hid&&Date.now()-QP.hid>60000&&!$("#qp-ov")){QP.att=0;qpStart("unlock")}});
+if(document.body)qpBoot();else document.addEventListener("DOMContentLoaded",qpBoot);
 /* подсказки адреса */
 var ADT=0,ADR=null;
 function adBox(inp){var b=$("#qm-adr");if(!b){b=document.createElement("div");b.id="qm-adr";b.style.cssText="position:absolute;z-index:60;background:#fff;border:1px solid #cfd8e3;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.15);max-height:260px;overflow:auto";document.body.appendChild(b)}
@@ -2186,7 +2303,7 @@ document.addEventListener("click",function(e){var t=e.target.closest&&e.target.c
   setTimeout(function(){busy=0;cur="";sched()},400)},true);
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&path()==="/cart"){busy=0;cur="";sched()}});
 document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("[data-cartsend]");if(a&&noSize(cartGroups()[a.getAttribute("data-cartsend")]||[])){e.preventDefault();e.stopPropagation();toast("Выберите размер у товаров",1);return}if(a){var id=a.getAttribute("data-cartsend");SENT[id]=sig(cartGroups()[id]||[]);sentSave();setTimeout(function(){a.textContent="✓ Отправлено · отправить снова"},200)}});
-function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 10.11 07:35";f.appendChild(d)}
+function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 10.11 12:35";f.appendChild(d)}
 function enhNavCart(){
   var bn=document.querySelector(".bottomnav");if(bn){var a=bn.querySelector("a[data-qmnc]")||bn.querySelector('a[href="#/map"]');
     if(a){if(!a.hasAttribute("data-qmnc")){a.setAttribute("data-qmnc","1");a.setAttribute("href","#/cart");a.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();location.hash="#/cart";busy=0;cur="";sched()},true);a.innerHTML='<span class="nav-badge"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"></circle><circle cx="18" cy="20" r="1.5"></circle><path d="M3 4h2.5l2.2 11h10.6l2-8H6.5"></path></svg></span>Корзина'}
@@ -2396,12 +2513,13 @@ VIEWS["/admin/managers"]=async function(){
   var orgs=(await sq("organizations")).sort(function(a,b){return String(a.name).localeCompare(String(b.name),"ru")}),deals=await sq("mgrDeals"),vs=await sq("orgVisits"),acs=await sq("mgrAcc");
   var ed=deals.find(function(d){return d.id===qs().get("e")})||{},fp0=ed.orgId?ed.orgId:"";
   var h=head("Менеджеры организаций","/admin")+(bad.length?'<div class="qm-card" style="border-color:#b42318;margin-bottom:10px"><b>Не хватает прав в базе</b><div class="qm-muted">Firestore не даёт читать: '+bad.map(esc).join(", ")+'. Откройте Firebase → Firestore → Правила, вставьте целиком актуальный файл firestore-rules-full.txt и нажмите «Опубликовать». Также проверьте, что вы вошли под адресом администратора.</div></div>':'')+'<div class="qm-muted" style="margin-bottom:8px">Менеджер приводит клиентов по своей ссылке. Когда заказ клиента выдан по QR, менеджеру начисляется процент. Деньги платите вы из комиссии приложения, организация доплачивать не должна.</div>';
-  h+='<form data-pform="mgrDeal" class="qm-card"><b>Условия для менеджера и организации</b><label class="qm-f" style="margin-top:8px">Организация<select name="org" required><option value="masters"'+(fp0==="masters"?' selected':'')+'>🔧 Мастера и автосервисы (заявки)</option>'+orgs.map(function(o){return '<option value="'+esc(o.id)+'"'+(o.id===fp0?' selected':'')+'>'+esc(o.name)+'</option>'}).join("")+'</select></label><label class="qm-f">Код менеджера (из раздела «Баллы»)<input name="code" required maxlength="8" autocapitalize="characters" value="'+esc(ed.code||"")+'"></label><label class="qm-f">Процент менеджеру, %<input name="pct" type="number" min="0.5" max="30" step="0.5" required value="'+(ed.pct||1)+'"></label><label class="qm-f">За что платить<select name="mode"><option value="all">За все покупки клиента</option><option value="first"'+(ed.mode==="first"?' selected':'')+'>Только за первую покупку</option></select></label><label class="qm-f">Срок после перехода клиента, дней (0 = бессрочно)<input name="days" type="number" min="0" max="3650" value="'+(ed.days||0)+'"></label><label class="qm-f"><span><input type="checkbox" name="active" style="width:20px;height:20px;display:inline-block;vertical-align:middle;margin-right:6px"'+(ed.id&&!ed.active?'':' checked')+'> Условия действуют</span></label><div class="qm-muted" style="margin:4px 0 8px">Комиссия организации должна быть выше, чем баллы клиенту + процент менеджеру. Если для пары уже есть условия, они заменятся.</div><button class="btn btn-primary" type="submit">Сохранить условия</button></form>';
+  h+=await mgrAdminTop(orgs,deals);
+  h+='<form data-pform="mgrDeal" class="qm-card" style="margin-top:10px"><b>Условия для менеджера и организации</b><label class="qm-f" style="margin-top:8px">Организация<select name="org" required><option value="masters"'+(fp0==="masters"?' selected':'')+'>🔧 Мастера и автосервисы (заявки)</option>'+orgs.map(function(o){return '<option value="'+esc(o.id)+'"'+(o.id===fp0?' selected':'')+'>'+esc(o.name)+'</option>'}).join("")+'</select></label><label class="qm-f">Код менеджера (из раздела «Баллы»)<input name="code" required maxlength="8" autocapitalize="characters" value="'+esc(ed.code||"")+'"></label><label class="qm-f">Процент менеджеру, %<input name="pct" type="number" min="0.5" max="30" step="0.5" required value="'+(ed.pct||1)+'"></label><label class="qm-f">За что платить<select name="mode"><option value="all">За все покупки клиента</option><option value="first"'+(ed.mode==="first"?' selected':'')+'>Только за первую покупку</option></select></label><label class="qm-f">Срок после перехода клиента, дней (0 = бессрочно)<input name="days" type="number" min="0" max="3650" value="'+(ed.days||0)+'"></label><label class="qm-f"><span><input type="checkbox" name="active" style="width:20px;height:20px;display:inline-block;vertical-align:middle;margin-right:6px"'+(ed.id&&!ed.active?'':' checked')+'> Условия действуют</span></label><div class="qm-muted" style="margin:4px 0 8px">Комиссия организации должна быть выше, чем баллы клиенту + процент менеджеру. Если для пары уже есть условия, они заменятся.</div><button class="btn btn-primary" type="submit">Сохранить условия</button></form>';
   h+='<div class="qm-card" style="margin-top:10px"><b>Действующие условия</b>';
   if(!deals.length)h+='<div class="qm-muted" style="margin-top:6px">Пока нет</div>';
   deals.sort(function(a,b){return (b.active?1:0)-(a.active?1:0)||b.createdAt-a.createdAt}).forEach(function(d){
     var n=vs.filter(function(v){return v.orgId===d.orgId&&v.code===d.code}).length,ac=acs.filter(function(a){return a.orgId===d.orgId&&a.managerUid===d.managerUid&&a.status!=="void"}),due=ac.filter(function(a){return !a.paid}).reduce(function(s,a){return s+a.amount},0),paid=ac.filter(function(a){return a.paid}).reduce(function(s,a){return s+a.amount},0),sum=ac.reduce(function(s,a){return s+a.sum},0);
-    h+='<div class="qm-rev"><div class="qm-row qm-between"><b>'+esc(d.orgName||"")+' ← '+esc(d.managerName||"")+' <span class="qm-muted">'+esc(d.code||"")+'</span></b>'+(d.active?'<span class="qm-st">действует</span>':'<span class="qm-st bad">выключено</span>')+'</div><div class="qm-muted">'+esc(mdTerms(d))+'</div><div class="qm-muted">Переходов по ссылке: <b>'+n+'</b> · заказов выдано: <b>'+ac.length+'</b> на '+money(sum)+' · к выплате: <b>'+money(due)+'</b> · выплачено: '+money(paid)+'</div><div class="qm-row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><a class="btn btn-ghost btn-sm" href="#/admin/managers?e='+esc(d.id)+'">Изменить</a><button class="btn btn-ghost btn-sm" data-act="mdToggle" data-id="'+esc(d.id)+'">'+(d.active?'Выключить':'Включить')+'</button>'+(due>0?'<button class="btn btn-secondary btn-sm" data-act="mdPay" data-id="'+esc(d.id)+'">Выплатил '+money(due)+'</button>':'')+'</div></div>'});
+    h+='<div class="qm-rev"><div class="qm-row qm-between"><b>'+esc(d.orgName||"")+' ← '+esc(d.managerName||"")+' <span class="qm-muted">'+esc(d.code||"")+'</span></b>'+(d.active?'<span class="qm-st">действует</span>':'<span class="qm-st bad">выключено</span>')+'</div><div class="qm-muted">'+esc(mdTerms(d))+'</div><div class="qm-muted">Переходов по ссылке: <b>'+n+'</b> · заказов выдано: <b>'+ac.length+'</b> на '+money(sum)+' · к выплате: <b>'+money(due)+'</b> · выплачено: '+money(paid)+'</div><div class="qm-row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><a class="btn btn-ghost btn-sm" href="#/admin/managers?e='+esc(d.id)+'">Изменить</a><button class="btn btn-ghost btn-sm" data-act="mdDel" data-id="'+esc(d.id)+'">Отключить</button><button class="btn btn-ghost btn-sm" data-act="mdToggle" data-id="'+esc(d.id)+'">'+(d.active?'Выключить':'Включить')+'</button>'+(due>0?'<button class="btn btn-secondary btn-sm" data-act="mdPay" data-id="'+esc(d.id)+'">Выплатил '+money(due)+'</button>':'')+'</div></div>'});
   h+='</div>';
   var byO={};vs.forEach(function(v){var b=byO[v.orgId]||(byO[v.orgId]={n:0,c:{}});b.n++;b.c[v.code]=(b.c[v.code]||0)+1});
   var ids=Object.keys(byO).sort(function(a,b){return byO[b].n-byO[a].n}),om={masters:"Мастера и автосервисы"};orgs.forEach(function(o){om[o.id]=o.name});
@@ -2420,13 +2538,96 @@ PF.mgrDeal=async function(fd,f,u){if(!u.admin)throw new Error("Нет прав")
   location.hash="#/admin/managers";return "Условия сохранены: "+(rc.name||code)+" — "+pct+"%"};
 ACT.mdToggle=async function(id){var d=await gGet("mgrDeals",id);if(!d)return;await gPatch("mgrDeals",id,{active:!d.active,updatedAt:Date.now()});toast(d.active?"Выключено":"Включено")};
 ACT.mdPay=async function(id){var d=await gGet("mgrDeals",id);if(!d)return;var ac=(await gQuery("mgrAcc",[])).filter(function(a){return a.orgId===d.orgId&&a.managerUid===d.managerUid&&a.status==="due"&&!a.paid}),t=ac.reduce(function(s,a){return s+a.amount},0);if(!ac.length)return;if(!confirm("Отметить выплаченными "+ac.length+" начислений на "+money(t)+" для "+d.managerName+"?"))return;var now=Date.now();await commit(ac.map(function(a){return {t:"patch",n:"mgrAcc",id:a.id,p:{paid:true,status:"paid",paidAt:now}}}));toast("Выплата отмечена")};
+/* ===== КАТАЛОГ ПРЕДЛОЖЕНИЙ ДЛЯ МЕНЕДЖЕРОВ + заявки + управление админом ===== */
+function mfStatus(s){return s==="pending"?"на рассмотрении":s==="approved"?"подключён":s==="rejected"?"отклонена":s==="removed"?"отключён админом":s||""}
+async function mgrAdminTop(orgs,deals){
+  var offers=[],apps=[],bad=[];
+  try{offers=await gQuery("orgOffers",[])}catch(e){bad.push("orgOffers")}
+  try{apps=await gQuery("mgrApps",[])}catch(e){bad.push("mgrApps")}
+  var om={masters:"Мастера и автосервисы"};orgs.forEach(function(o){om[o.id]=o.name});
+  var oe=offers.find(function(o){return o.id===qs().get("o")})||{},fo=oe.id||"";
+  var pend=apps.filter(function(a){return a.status==="pending"}).sort(function(a,b){return a.createdAt-b.createdAt});
+  var h=bad.length?'<div class="qm-card" style="border-color:#b42318;margin-bottom:10px"><b>Не хватает прав в базе</b><div class="qm-muted">Нет доступа к: '+bad.join(", ")+'. Вставьте в Firebase актуальные правила (файл firestore-rules-full.txt) и нажмите «Опубликовать».</div></div>':'';
+  var ac=deals.filter(function(d){return d.active}).length;
+  h+='<div class="qm-card"><div class="qm-row" style="gap:18px"><div><div class="qm-muted">Заявок ждёт</div><b style="font-size:22px">'+pend.length+'</b></div><div><div class="qm-muted">Открытых предложений</div><b style="font-size:22px">'+offers.filter(function(o){return o.open}).length+'</b></div><div><div class="qm-muted">Активных менеджеров</div><b style="font-size:22px">'+ac+'</b></div></div></div>';
+  h+='<div class="qm-card" style="margin-top:10px"><b>Заявки менеджеров</b>';
+  if(!pend.length)h+='<div class="qm-muted" style="margin-top:6px">Новых заявок нет.</div>';
+  pend.forEach(function(a){var of=offers.find(function(o){return o.id===a.orgId});
+    h+='<div class="qm-rev"><div><b>'+esc(a.managerName||"")+'</b> <span class="qm-muted">код '+esc(a.code||"")+'</span> → <b>'+esc(om[a.orgId]||a.orgName||a.orgId)+'</b></div><div class="qm-muted">Подана '+dt(a.createdAt)+(of?' · условия: '+esc(mdTerms(of))+' · мест: '+(of.cap?(of.taken||0)+' из '+of.cap:'без ограничения'):' · предложение закрыто или удалено')+'</div><div class="qm-row" style="gap:6px;margin-top:6px"><button class="btn btn-primary btn-sm" data-act="maOk" data-id="'+esc(a.id)+'">Одобрить</button><button class="btn btn-ghost btn-sm" data-act="maNo" data-id="'+esc(a.id)+'">Отклонить</button></div></div>'});
+  h+='</div>';
+  h+='<form data-pform="mgrOffer" class="qm-card" style="margin-top:10px"><b>Предложение организации для менеджеров</b><div class="qm-muted">Условия публичные: менеджеры видят их в каталоге и сами подают заявку. Условия фиксируются за менеджером в момент вашего одобрения.</div><label class="qm-f" style="margin-top:8px">Организация<select name="org" required><option value="masters"'+(fo==="masters"?' selected':'')+'>🔧 Мастера и автосервисы (заявки)</option>'+orgs.map(function(o){return '<option value="'+esc(o.id)+'"'+(o.id===fo?' selected':'')+'>'+esc(o.name)+'</option>'}).join("")+'</select></label><label class="qm-f">Процент менеджеру, %<input name="pct" type="number" min="0.5" max="30" step="0.5" required value="'+(oe.pct||1)+'"></label><label class="qm-f">За что платить<select name="mode"><option value="all"'+(oe.mode!=="first"?' selected':'')+'>Со всех покупок клиента</option><option value="first"'+(oe.mode==="first"?' selected':'')+'>Только с первой покупки (не для мастеров)</option></select></label><label class="qm-f">Срок после перехода по ссылке, дней (0 = бессрочно)<input name="days" type="number" min="0" max="3650" value="'+(oe.days||0)+'"></label><label class="qm-f">Сколько менеджеров можно (0 = без ограничения)<input name="cap" type="number" min="0" max="999" value="'+(oe.cap||0)+'"></label><label class="qm-row" style="gap:8px;margin:6px 0"><input type="checkbox" name="open" style="width:20px;height:20px;flex:none"'+(oe.id&&!oe.open?'':' checked')+'> Открыть для менеджеров (показывать в каталоге)</label><button class="btn btn-primary" type="submit">Сохранить предложение</button></form>';
+  h+='<div class="qm-card" style="margin-top:10px"><b>Предложения в каталоге</b>';
+  if(!offers.length)h+='<div class="qm-muted" style="margin-top:6px">Пока нет. Создайте предложение выше.</div>';
+  offers.sort(function(a,b){return (b.open?1:0)-(a.open?1:0)}).forEach(function(o){
+    h+='<div class="qm-rev"><div class="qm-row qm-between"><b>'+esc(om[o.id]||o.orgName||o.id)+'</b>'+(o.open?'<span class="qm-st">открыто</span>':'<span class="qm-st bad">закрыто</span>')+'</div><div class="qm-muted">'+esc(mdTerms(o))+' · менеджеров: <b>'+(o.taken||0)+'</b>'+(o.cap?' из '+o.cap:'')+'</div><div class="qm-row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><a class="btn btn-ghost btn-sm" href="#/admin/managers?o='+esc(o.id)+'">Изменить</a><button class="btn btn-ghost btn-sm" data-act="moToggle" data-id="'+esc(o.id)+'">'+(o.open?'Закрыть набор':'Открыть набор')+'</button></div></div>'});
+  h+='</div>';return h}
+async function mgrCheckTerms(oid,org,pct,mode){var isM=oid==="masters";
+  if(isM){if(pct>=FEE_RATE*100)throw new Error("Комиссия мастеров "+Math.round(FEE_RATE*100)+"%. Процент менеджеру должен быть ниже.");return}
+  var R=await getRules(oid),fp=await feePct(oid);if(fp<=R.earnPct+pct)throw new Error("Комиссия организации "+fp+"% должна быть выше, чем баллы клиенту "+R.earnPct+"% + менеджеру "+pct+"% = "+(R.earnPct+pct)+"%. Поднимите комиссию в «Комиссии магазинов» или уменьшите процент.")}
+PF.mgrOffer=async function(fd,f,u){if(!u.admin)throw new Error("Нет прав");
+  var oid=String(fd.get("org")),pct=Number(fd.get("pct")),days=Math.round(Number(fd.get("days")||0)),cap=Math.round(Number(fd.get("cap")||0)),mode=fd.get("mode")==="first"?"first":"all";
+  if(!(pct>0&&pct<=30))throw new Error("Процент от 0,5 до 30");if(!(days>=0&&days<=3650))throw new Error("Срок от 0 до 3650");if(!(cap>=0&&cap<=999))throw new Error("Лимит от 0 до 999");
+  var isM=oid==="masters",org=isM?{name:"Мастера и автосервисы",ownerId:""}:await gGet("organizations",oid);if(!org)throw new Error("Организация не найдена");
+  if(isM)mode="all";await mgrCheckTerms(oid,org,pct,mode);
+  var old=await gGet("orgOffers",oid);
+  try{await gSet("orgOffers",oid,{orgId:oid,orgName:org.name,ownerId:org.ownerId||"",pct:pct,mode:mode,days:days,cap:cap,open:!!fd.get("open"),taken:old?(old.taken||0):0,createdAt:old?old.createdAt:Date.now(),updatedAt:Date.now()})}catch(e){if(e&&e.code==="permission-denied")throw new Error("Firestore не разрешил запись. Вставьте в Firebase актуальные правила (firestore-rules-full.txt) и повторите.");throw e}
+  location.hash="#/admin/managers";return "Предложение сохранено: "+org.name+" — "+pct+"%"};
+ACT.moToggle=async function(id){var o=await gGet("orgOffers",id);if(!o)return;await gPatch("orgOffers",id,{open:!o.open,updatedAt:Date.now()});toast(o.open?"Набор закрыт":"Набор открыт")};
+ACT.maOk=async function(id){var u=me();if(!u||!u.admin)return;try{
+  var a=await gGet("mgrApps",id);if(!a||a.status!=="pending")throw new Error("Заявка уже обработана");
+  var of=await gGet("orgOffers",a.orgId);if(!of)throw new Error("Для организации нет предложения. Создайте его выше.");
+  if(of.cap&&(of.taken||0)>=of.cap)throw new Error("Мест нет: лимит "+of.cap+". Увеличьте лимит в предложении.");
+  var isM=a.orgId==="masters",org=isM?{name:"Мастера и автосервисы",ownerId:""}:await gGet("organizations",a.orgId);if(!org)throw new Error("Организация не найдена");
+  var rc=await gGet("refCodes",a.code);if(!rc||rc.uid!==a.managerUid)throw new Error("Код менеджера не совпадает с заявкой");
+  if(!isM&&rc.uid===org.ownerId)throw new Error("Владелец организации не может быть её менеджером");
+  await mgrCheckTerms(a.orgId,org,of.pct,of.mode);
+  var old=await gGet("mgrDeals",id),now=Date.now();
+  await commit([{t:"set",n:"mgrDeals",id:id,data:{orgId:a.orgId,orgName:org.name,ownerId:org.ownerId||"",managerUid:a.managerUid,managerName:a.managerName||"",code:a.code,pct:of.pct,mode:isM?"all":of.mode,days:of.days||0,active:true,createdAt:old?old.createdAt:now,updatedAt:now,by:u.uid}},
+    {t:"patch",n:"mgrApps",id:id,p:{status:"approved",decidedAt:now,reason:""}},{t:"patch",n:"orgOffers",id:a.orgId,p:{taken:(of.taken||0)+(old&&old.active?0:1)}}]);
+  toast("Менеджер подключён");render(true)}catch(e){toast(errText(e),true)}};
+ACT.maNo=async function(id){var u=me();if(!u||!u.admin)return;var r=prompt("Причина отказа (увидит менеджер, можно оставить пустым):","");if(r===null)return;
+  try{await gPatch("mgrApps",id,{status:"rejected",decidedAt:Date.now(),reason:String(r).slice(0,200)});toast("Заявка отклонена");render(true)}catch(e){toast(errText(e),true)}};
+ACT.mdDel=async function(id){var u=me();if(!u||!u.admin)return;var d=await gGet("mgrDeals",id);if(!d)return;
+  if(!confirm("Отключить менеджера "+(d.managerName||"")+" от «"+(d.orgName||"")+"»? Уже начисленные суммы сохранятся, новые начисляться не будут."))return;
+  try{var ops=[{t:"del",n:"mgrDeals",id:id}];var a=await gGet("mgrApps",id);if(a)ops.push({t:"patch",n:"mgrApps",id:id,p:{status:"removed",decidedAt:Date.now()}});
+    var of=await gGet("orgOffers",d.orgId);if(of&&d.active&&(of.taken||0)>0)ops.push({t:"patch",n:"orgOffers",id:d.orgId,p:{taken:of.taken-1}});
+    await commit(ops);toast("Менеджер отключён");render(true)}catch(e){toast(errText(e),true)}};
+VIEWS["/manager/find"]=async function(){
+  var u=me();if(!u)return head("Найти организации","/manager")+needLogin();
+  var offers=[],apps=[],deals=[],bad=false;
+  try{offers=await gQuery("orgOffers",[["open","==",true]])}catch(e){bad=true}
+  try{apps=await gQuery("mgrApps",[["managerUid","==",u.uid]])}catch(e){}
+  try{deals=await gQuery("mgrDeals",[["managerUid","==",u.uid]])}catch(e){}
+  var sum=100000;try{sum=Number(localStorage.getItem("qm:mfsum"))||100000}catch(e){}
+  offers.sort(function(a,b){return b.pct*(b.mode==="all"?1:.5)-a.pct*(a.mode==="all"?1:.5)});
+  var h=head("Найти организации","/manager")+'<div class="qm-card"><b>Выберите, с кем работать</b><p class="qm-muted" style="margin:6px 0">Менеджер приводит клиентов по своей ссылке и получает процент с каждого заказа, который клиент получил и подтвердил по QR. Клиент закрепляется за тем менеджером, по чьей ссылке пришёл первым. Подайте заявку, администратор её одобрит.</p><label class="qm-f">Сумма продаж для расчёта, ₸<input id="mf-sum" type="number" inputmode="numeric" min="0" step="10000" value="'+sum+'"></label></div>';
+  if(bad)h+='<div class="qm-card" style="margin-top:10px">Каталог пока недоступен. Попробуйте позже.</div>';
+  else if(!offers.length)h+='<div class="qm-card" style="margin-top:10px"><b>Сейчас набора нет</b><p class="qm-muted">Администратор пока не открыл предложения. Загляните позже.</p></div>';
+  offers.forEach(function(o){var id=o.id+"_"+u.uid,a=apps.find(function(x){return x.id===id}),d=deals.find(function(x){return x.id===id}),full=o.cap&&(o.taken||0)>=o.cap,mine=o.ownerId&&o.ownerId===u.uid,btn="";
+    if(d&&d.active)btn='<span class="qm-st">Вы менеджер</span> <a class="btn btn-ghost btn-sm" href="#/manager">Кабинет</a>';
+    else if(mine)btn='<span class="qm-muted">Это ваша организация</span>';
+    else if(a&&a.status==="pending")btn='<span class="qm-st">Заявка на рассмотрении</span> <button class="btn btn-ghost btn-sm" data-act="mgCancel" data-id="'+esc(id)+'">Отозвать</button>';
+    else if(full)btn='<span class="qm-muted">Мест нет</span>';
+    else btn=(a&&(a.status==="rejected"||a.status==="removed")?'<div class="qm-muted" style="margin-bottom:6px">Прошлая заявка: '+mfStatus(a.status)+(a.reason?' — '+esc(a.reason):'')+'</div>':'')+'<button class="btn btn-primary btn-sm" data-act="mgApply" data-id="'+esc(o.id)+'">Подать заявку</button>';
+    h+='<div class="qm-card" style="margin-top:10px"><div class="qm-row qm-between"><b>'+(o.id==="masters"?'<a href="#/masters">'+esc(o.orgName||"Мастера")+'</a>':'<a href="#/businesses/'+esc(o.id)+'">'+esc(o.orgName||"")+'</a>')+'</b><b style="font-size:22px">'+o.pct+'%</b></div><div class="qm-muted">'+esc(mdTerms(o))+'</div><div class="qm-muted">Свободно мест: '+(o.cap?Math.max(0,o.cap-(o.taken||0))+' из '+o.cap:'без ограничения')+' · при продажах на '+'<span data-mfs>'+money(sum)+'</span> вы получите <b data-mfp="'+o.pct+'">'+money(sum*o.pct/100)+'</b></div><div style="margin-top:8px">'+btn+'</div></div>'});
+  return h};
+document.addEventListener("input",function(e){var i=e.target;if(!i||i.id!=="mf-sum")return;var v=Math.max(0,Number(i.value)||0);try{localStorage.setItem("qm:mfsum",String(v))}catch(x){}
+  document.querySelectorAll("[data-mfs]").forEach(function(s){s.textContent=money(v)});document.querySelectorAll("[data-mfp]").forEach(function(s){s.textContent=money(v*Number(s.dataset.mfp)/100)})});
+ACT.mgApply=async function(oid){var u=me();if(!u)return;try{
+  var of=await gGet("orgOffers",oid);if(!of||!of.open)throw new Error("Набор закрыт");if(of.cap&&(of.taken||0)>=of.cap)throw new Error("Мест нет");
+  if(of.ownerId&&of.ownerId===u.uid)throw new Error("Нельзя быть менеджером своей организации");
+  var code=await myCode(true),id=oid+"_"+u.uid;
+  await gSet("mgrApps",id,{orgId:oid,orgName:of.orgName||"",ownerId:of.ownerId||"",managerUid:u.uid,managerName:u.name||"",code:code,status:"pending",createdAt:Date.now()});
+  toast("Заявка отправлена. Администратор рассмотрит её");render(true)}catch(e){toast(e&&e.code==="permission-denied"?"Нет прав: администратору нужно обновить правила Firestore":errText(e),true)}};
+ACT.mgCancel=async function(id){if(!confirm("Отозвать заявку?"))return;try{await gDel("mgrApps",id);toast("Заявка отозвана");render(true)}catch(e){toast(errText(e),true)}};
 VIEWS["/manager"]=async function(){
   var u=me();if(!u)return head("Менеджер","/points")+needLogin();
   var code=await myCode(true),deals=(await gQuery("mgrDeals",[["managerUid","==",u.uid]])).sort(function(a,b){return (b.active?1:0)-(a.active?1:0)}),ac=await gQuery("mgrAcc",[["managerUid","==",u.uid]]),vs=[];
   try{vs=await gQuery("orgVisits",[["code","==",code]])}catch(e){}
   var h=head("Кабинет менеджера","/points"),okA=ac.filter(function(a){return a.status!=="void"}),due=okA.filter(function(a){return !a.paid}).reduce(function(s,a){return s+a.amount},0),paid=okA.filter(function(a){return a.paid}).reduce(function(s,a){return s+a.amount},0);
   h+='<div class="qm-card"><div class="qm-row" style="gap:18px"><div><div class="qm-muted">К выплате</div><b style="font-size:22px">'+money(due)+'</b></div><div><div class="qm-muted">Выплачено</div><b>'+money(paid)+'</b></div><div><div class="qm-muted">Переходов</div><b>'+vs.length+'</b></div></div><p class="qm-muted">Выплаты делает администратор переводом. Деньги начисляются только когда заказ вашего клиента выдан по QR.</p></div>';
-  if(!deals.length)h+='<div class="qm-card" style="margin-top:10px"><b>Условий пока нет</b><p class="qm-muted">Администратор назначает вам организации и процент. Сообщите ему свой код: <b>'+esc(code)+'</b>.</p></div>';
+  if(!deals.length)h+='<div class="qm-card" style="margin-top:10px"><b>Условий пока нет</b><p class="qm-muted">Выберите организацию в каталоге и подайте заявку: администратор её одобрит.</p><a class="btn btn-primary" href="#/manager/find">Найти организации</a></div>';
+  if(deals.length)h+='<a class="btn btn-secondary" style="margin-top:10px" href="#/manager/find">🔍 Найти ещё организации</a>';
   deals.forEach(function(d){var a2=okA.filter(function(a){return a.orgId===d.orgId}),v2=vs.filter(function(v){return v.orgId===d.orgId}).length;
     h+='<div class="qm-card" style="margin-top:10px"><div class="qm-row qm-between"><b>Вы менеджер: <a href="#/'+(d.orgId==="masters"?'masters':'businesses/'+esc(d.orgId))+'">'+esc(d.orgName||"")+'</a></b>'+(d.active?'<span class="qm-st">действует</span>':'<span class="qm-st bad">выключено</span>')+'</div><div class="qm-muted">Условия: '+esc(mdTerms(d))+'</div><div class="qm-muted" style="margin-top:4px">Переходов: <b>'+v2+'</b> · выдано заказов: <b>'+a2.length+'</b> на '+money(a2.reduce(function(s,a){return s+a.sum},0))+' · заработано '+money(a2.reduce(function(s,a){return s+a.amount},0))+'</div><button class="btn btn-primary btn-sm" style="margin-top:8px" data-act="share" data-id="'+esc(d.orgId)+'">Скопировать / отправить ссылку</button></div>'});
   if(okA.length){h+='<div class="qm-card" style="margin-top:10px"><b>Начисления</b>';okA.sort(function(a,b){return b.createdAt-a.createdAt}).slice(0,50).forEach(function(a){h+='<div class="qm-rev qm-row qm-between"><span>'+esc(a.orgName||"")+' · заказ № '+a.num+'<div class="qm-muted">'+money(a.sum)+' × '+a.pct+'% · '+dt(a.createdAt)+'</div></span><span><b>'+money(a.amount)+'</b><div class="qm-muted">'+(a.paid?'выплачено':'к выплате')+'</div></span></div>'});h+='</div>'}
@@ -2437,7 +2638,7 @@ function ntKey(k){var u=me();return "qm:nt:"+(u?u.uid:"")+":"+k}
 function ntSeen(k){try{var v=localStorage.getItem(ntKey(k));if(v==null){v=String(Date.now());localStorage.setItem(ntKey(k),v)}return Number(v)}catch(e){return Date.now()}}
 function ntMark(k){try{localStorage.setItem(ntKey(k),String(Date.now()))}catch(e){}NT[k]=0;updNT()}
 function ntTotal(){return (NT.cl||0)+(NT.so||0)+(NT.mg||0)+(NT.adm||0)+(NEWC||0)+(SON||0)+(PN||0)+(PNA||0)}
-async function ntCheck(force){var u=me();try{pushInit()}catch(e){}
+async function ntCheck(force){var u=me();try{pushInit();wpInit()}catch(e){}
   if(!u){NT={cl:0,so:0,mg:0,adm:0};NTR=null;updNT();return}
   if(document.hidden)return;if(!force&&Date.now()-NTL<60000)return;NTL=Date.now();
   try{
@@ -2446,8 +2647,8 @@ async function ntCheck(force){var u=me();try{pushInit()}catch(e){}
     var s1=ntSeen("cl"),s2=ntSeen("so"),s3=ntSeen("mg");
     try{NT.cl=(await gQuery("orders",[["clientId","==",u.uid]])).filter(function(o){return o.status!=="open"&&o.status!=="cancelled"&&(o.updatedAt||0)>s1}).length}catch(e){}
     try{NT.so=(await gQuery("sorders",[["buyerId","==",u.uid]])).filter(function(o){return o.status!=="new"&&o.cancelBy!==u.uid&&(o.updatedAt||0)>s2}).length}catch(e){}
-    if(NTR.mgr){try{NT.mg=(await gQuery("mgrAcc",[["managerUid","==",u.uid]])).filter(function(a){return a.status!=="void"&&(a.createdAt||0)>s3}).length}catch(e){}}else NT.mg=0;
-    if(u.admin){var n=0;try{n+=(await gQuery("masters",[["status","==","pending"]])).length}catch(e){}try{n+=(await gQuery("organizations",[["status","==","pending"]])).length}catch(e){}NT.adm=n}else NT.adm=0;
+    var mgn=0;if(NTR.mgr){try{mgn+=(await gQuery("mgrAcc",[["managerUid","==",u.uid]])).filter(function(a){return a.status!=="void"&&(a.createdAt||0)>s3}).length}catch(e){}}try{mgn+=(await gQuery("mgrApps",[["managerUid","==",u.uid]])).filter(function(a){return (a.status==="approved"||a.status==="rejected")&&(a.decidedAt||0)>s3}).length}catch(e){}NT.mg=mgn;
+    if(u.admin){var n=0;try{n+=(await gQuery("masters",[["status","==","pending"]])).length}catch(e){}try{n+=(await gQuery("organizations",[["status","==","pending"]])).length}catch(e){}try{n+=(await gQuery("mgrApps",[["status","==","pending"]])).length}catch(e){}NT.adm=n}else NT.adm=0;
     if(NTR.master&&NTR.master.status==="approved")checkNew(false);
   }catch(e){console.warn("ntCheck",e)}
   updNT()}
@@ -2461,13 +2662,14 @@ function hubHtml(){var u=me();if(!u)return '';var r=NTR||{},m=r.master,h='',nw=[
     (r.org?hubTile('#/business/orders?t=act&s=new','🛒','Заказы магазина','Новые и в работе',SON):'')+
     (r.org?hubTile('#/points/cash','💳','Касса','Баллы клиента по QR',0):'')+
     (r.org?hubTile('#/points/rules','🎯','Лояльность','Проценты и условия',0):'')+
-    (r.mgr?hubTile('#/manager','🤝','Менеджер','Переходы и выплаты',NT.mg):'')+'</div>';
+    (r.mgr?hubTile('#/manager','🤝','Менеджер','Переходы и выплаты',NT.mg):hubTile('#/manager/find','🤝','Стать менеджером','Выберите выгодные условия',NT.mg))+'</div>';
+  var ws=wpState();if(ws==="off"||ws==="ios-install"||ws==="denied")h+='<div class="qm-hubh">Уведомления</div><div class="qm-hub"><a class="qm-tile" href="javascript:void(0)" data-act="pushOn"><span class="ic">🔔</span><b>Включить уведомления</b><small>'+(ws==="denied"?'Запрещены в браузере':ws==="ios-install"?'Сначала установите на экран':'О заказах и заявках на телефон')+'</small></a></div>';
   if(!isStandalone())h+='<div class="qm-hubh">Приложение</div><div class="qm-hub"><a class="qm-tile" href="#/download"><span class="ic">📲</span><b>Скачать приложение</b><small>Android, iPhone</small></a></div>';
-  h+='<div class="qm-hubh">Данные</div><div class="qm-hub"><a class="qm-tile" href="javascript:void(0)" data-act="delAcc"><span class="ic">🗑</span><b>Удалить аккаунт</b><small>Профиль и анкету</small></a></div>';
+  var ph=myPhone();h+='<div class="qm-hubh">Данные</div><div class="qm-hub"><a class="qm-tile" href="javascript:void(0)" data-act="pinMenu"><span class="ic">🔢</span><b>Код быстрого входа</b><small>'+(qpUser()&&qpHas(qpUser().uid)?'Включён — сменить или отключить':'Вход по 4 цифрам')+'</small></a>'+(QA_PHONE?'<a class="qm-tile" href="javascript:void(0)" data-act="phoneLink"><span class="ic">📱</span><b>Телефон</b><small>'+(ph?esc(ph)+' — для входа и восстановления':'Привязать для входа по SMS')+'</small></a>':'')+'<a class="qm-tile" href="javascript:void(0)" data-act="delAcc"><span class="ic">🗑</span><b>Удалить аккаунт</b><small>Профиль и анкету</small></a></div>';
   if(u.admin)h+='<div class="qm-hubh">Администратор</div><div class="qm-hub">'+hubTile('#/admin','🛠','Админ-панель','Проверки, мастера, отзывы',NT.adm+PNA)+hubTile('#/admin/shops','💰','Комиссии','Магазины и оплаты',0)+hubTile('#/admin/managers','🤝','Менеджеры','Условия и выплаты',0)+hubTile('#/admin/points','📊','Начисления','Баллы всех клиентов',0)+'</div>';
   return h}
 function updNT(){try{hideDupes()}catch(e){}var c=document.querySelector("[data-qmp]");if(c&&me()){var h=hubHtml();if(c.__h!==h){c.innerHTML=h;c.__h=h}}try{applyBadge()}catch(e){}}
-["/orders:cl","/shop-orders:so","/manager:mg"].forEach(function(s){var a=s.split(":"),f=VIEWS[a[0]];if(f)VIEWS[a[0]]=async function(){try{ntMark(a[1])}catch(e){}return f.apply(this,arguments)}});
+["/orders:cl","/shop-orders:so","/manager:mg","/manager/find:mg"].forEach(function(s){var a=s.split(":"),f=VIEWS[a[0]];if(f)VIEWS[a[0]]=async function(){try{ntMark(a[1])}catch(e){}return f.apply(this,arguments)}});
 function ntStart(){if(NTP)return;NTP=1;setTimeout(function(){ntCheck(true)},1200);setInterval(function(){ntCheck(false)},60000);document.addEventListener("visibilitychange",function(){if(!document.hidden)ntCheck(false)})}
 
 /* ===== УСТАНОВКА ПРИЛОЖЕНИЯ (PWA) ===== */
@@ -2522,7 +2724,7 @@ async function pushInit(){var PN=CP("PushNotifications"),u=me();if(!CAP||!PN||!u
     await PN.register()}catch(e){console.warn("push",e)}}
 
 /* ===== СКАЧАТЬ ПРИЛОЖЕНИЕ ===== */
-var QM_BUILD="10.11 07:35",APP_VER=1,APK_URL="https://github.com/cabelNL/Qalapvl/releases/latest/download/qala-pvl.apk",SITE_URL="https://cabelnl.github.io/Qalapvl/";
+var QM_BUILD="10.11 12:35",APP_VER=1,APK_URL="https://github.com/cabelNL/Qalapvl/releases/latest/download/qala-pvl.apk",SITE_URL="https://cabelnl.github.io/Qalapvl/";
 VIEWS["/download"]=async function(){
   var ios=isIOS(),and=/android/i.test(navigator.userAgent),h=head("Скачать приложение","/profile");
   function step(n,t){return '<div style="display:flex;flex-wrap:nowrap;gap:10px;align-items:flex-start;margin-top:10px"><b class="qm-num">'+n+'</b><span style="flex:1;line-height:1.4">'+t+'</span></div>'}
@@ -2558,6 +2760,23 @@ setTimeout(checkWebVer,5000);document.addEventListener("visibilitychange",functi
 
 var DUPL=/^(Мой бизнес|Админ-панель|Бонусы и друзья)/;
 function hideDupes(){var c=document.querySelector("[data-qmp]");if(!c||!me())return;[].forEach.call(document.querySelectorAll("main.page a"),function(a){if(c.contains(a)||a.__dh)return;var t=(a.textContent||"").replace(/\s+/g," ").trim();if(!DUPL.test(t))return;a.style.display="none";a.__dh=1})}
+
+/* ===== PUSH-УВЕДОМЛЕНИЯ ДЛЯ САЙТА И УСТАНОВЛЕННОГО НА ЭКРАН ПРИЛОЖЕНИЯ (Web Push через Firebase) ===== */
+function wpSupported(){return !CAP&&("serviceWorker" in navigator)&&("PushManager" in window)&&("Notification" in window)&&location.protocol.indexOf("http")===0}
+function wpState(){if(CAP)return "native";if(!wpSupported())return isIOS()?"ios-install":"unsupported";return Notification.permission==="granted"&&localStorage.getItem("qm:wp:"+((me()||{}).uid||""))?"on":(Notification.permission==="denied"?"denied":"off")}
+async function wpRegister(ask){var f=mode(),u=me();if(!f||!u)throw new Error("Войдите в аккаунт");if(!wpSupported())throw new Error(isIOS()?"На iPhone сначала добавьте сайт на экран «Домой» (Safari → Поделиться → На экран Домой), откройте приложение с иконки и включите уведомления там.":"Этот браузер не поддерживает уведомления");
+  var cfg=null;try{cfg=await (await fetch("push-config.json?t="+Date.now(),{cache:"no-store"})).json()}catch(e){}
+  if(!cfg||!cfg.vapidKey)throw new Error("Уведомления ещё не настроены: администратору нужно добавить файл push-config.json (см. инструкцию PUSH_SETUP).");
+  if(Notification.permission!=="granted"){if(!ask)return;var pm=await Notification.requestPermission();if(pm!=="granted")throw new Error("Уведомления запрещены. Разрешите их в настройках браузера для этого сайта.")}
+  var M=await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging.js"),reg=await navigator.serviceWorker.register("sw.js");await navigator.serviceWorker.ready;
+  var msg=M.getMessaging(f.X.getApps()[0]),tk=await M.getToken(msg,{vapidKey:cfg.vapidKey,serviceWorkerRegistration:reg});if(!tk)throw new Error("Не удалось получить токен уведомлений");
+  var h=0;for(var i=0;i<tk.length;i++)h=(h*31+tk.charCodeAt(i))>>>0;
+  await gSet("pushTokens",u.uid+"_"+h.toString(36),{uid:u.uid,token:tk,platform:"web",updatedAt:Date.now()});localStorage.setItem("qm:wp:"+u.uid,"1");
+  if(!window.__wpMsg){window.__wpMsg=1;M.onMessage(msg,function(p){var d=(p&&p.data)||{},n=(p&&p.notification)||{};toast("🔔 "+(d.title||n.title||"")+(d.body||n.body?": "+(d.body||n.body):""));ntCheck(true)})}
+  try{updNT()}catch(e){}}
+ACT.pushOn=async function(){await wpRegister(true);toast("Уведомления включены")};
+if("serviceWorker" in navigator){navigator.serviceWorker.addEventListener("message",function(e){if(e.data&&e.data.route){location.hash=e.data.route;ntCheck(true)}})}
+var WPU="";function wpInit(){var u=me();if(!u||CAP||WPU===u.uid)return;WPU=u.uid;if(wpSupported()&&Notification.permission==="granted")wpRegister(false).catch(function(){})}
 var BUYP=0;
 var BUYACT=1,BUYL=0;
 async function checkBuyer(){var u=me();if(!u||document.hidden)return;if(!BUYACT&&Date.now()-BUYL<300000)return;BUYL=Date.now();
@@ -2648,7 +2867,7 @@ function diag(){
 }
 window.__qcUid=function(){try{var x=me();return x&&x.uid||""}catch(e){return ""}};var raf=0;
 function sync(){raf=0;try{ensureManager();render(false).catch(function(e){console.warn(e);showErr(e)})}catch(e){console.warn(e);showErr(e)}
-  [injectNav,function(){drawReviews(false)},injectRatings,enhLogin,enhHours,enhAdminPhoto,revTabSync,enhPartnerNav,ensureRefLink,enhShopNav,enhCart,enhCartIcon,enhAutoForm,hideDupes].forEach(function(fn){try{var r=fn();if(r&&r.catch)r.catch(function(e){console.warn(e)})}catch(e){console.warn(e)}})}
+  [injectNav,function(){drawReviews(false)},injectRatings,enhLogin,enhAuthAlt,enhPinOffer,enhHours,enhAdminPhoto,revTabSync,enhPartnerNav,ensureRefLink,enhShopNav,enhCart,enhCartIcon,enhAutoForm,hideDupes].forEach(function(fn){try{var r=fn();if(r&&r.catch)r.catch(function(e){console.warn(e)})}catch(e){console.warn(e)}})}
 function showErr(e){var m=$("main.page");if(!m||!VIEWS[path()])return;var v=$("#qm-view");if(!v){v=document.createElement("div");v.id="qm-view";v.className="container";m.appendChild(v)}v.innerHTML='<div class="qm-card">Не удалось открыть раздел: '+esc(errText(e))+'</div>'}
 function sched(){if(!raf)raf=requestAnimationFrame(sync)}
 window.addEventListener("hashchange",function(){busy=0;sched()});
