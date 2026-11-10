@@ -356,10 +356,10 @@ function viewBuyer(){
     '<div class="qx-card"><div class="qx-n">'+money(earned)+'</div><div class="qx-l">Начислено всего</div></div>'+
     '<div class="qx-card"><div class="qx-n">'+money(spent)+'</div><div class="qx-l">Списано</div></div></div>';
   h+='<div class="qx-card"><div class="qx-l">Ваш код покупателя</div><div class="qx-code">'+code+'</div>'+
-    '<p class="small muted" style="margin:8px 0">Назовите код продавцу при покупке — так он спишет вам бонусы. Друзья, пришедшие по вашей ссылке, при покупке приносят вам '+Math.round(REF_RATE*100)+'% от суммы.</p>'+
+    '<p class="small muted" style="margin:8px 0">Назовите код продавцу при покупке — так он спишет вам бонусы. Друзья, пришедшие по вашей ссылке, при покупке приносят вам бонусы с покупок (процент задаёт организация).</p>'+
     '<input class="qx-in" readonly value="'+esc(link)+'" aria-label="Ваша ссылка" onclick="this.select()">'+
     '<div class="qx-btns" style="margin-top:8px"><button class="btn btn-primary" data-act="copy" data-v="'+esc(link)+'">Скопировать ссылку</button>'+
-    '<a class="btn btn-secondary" target="_blank" rel="noopener" href="https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent("Справочник Павлодара QALA PVL — заходи по моей ссылке")+'">Отправить в Telegram</a></div></div>';
+    '<a class="btn btn-secondary" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent("Справочник Павлодара QALA PVL — заходи по моей ссылке: "+link)+'">Отправить в WhatsApp</a></div></div>';
   h+='<div class="qx-card"><h3>Приглашённые друзья</h3>';
   if(!friends.length)h+='<p class="small muted">Пока никого. Отправьте ссылку друзьям — когда они зарегистрируются и купят у продавцов, бонусы появятся здесь.</p>';
   friends.forEach(function(f){var u=user(f),sum=sales.filter(function(s){return s.buyerUid===f}).reduce(function(a,s){return a+(s.bonus||0)},0);
@@ -2186,7 +2186,7 @@ document.addEventListener("click",function(e){var t=e.target.closest&&e.target.c
   setTimeout(function(){busy=0;cur="";sched()},400)},true);
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&path()==="/cart"){busy=0;cur="";sched()}});
 document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("[data-cartsend]");if(a&&noSize(cartGroups()[a.getAttribute("data-cartsend")]||[])){e.preventDefault();e.stopPropagation();toast("Выберите размер у товаров",1);return}if(a){var id=a.getAttribute("data-cartsend");SENT[id]=sig(cartGroups()[id]||[]);sentSave();setTimeout(function(){a.textContent="✓ Отправлено · отправить снова"},200)}});
-function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 09.11 19:46";f.appendChild(d)}
+function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 10.11 07:35";f.appendChild(d)}
 function enhNavCart(){
   var bn=document.querySelector(".bottomnav");if(bn){var a=bn.querySelector("a[data-qmnc]")||bn.querySelector('a[href="#/map"]');
     if(a){if(!a.hasAttribute("data-qmnc")){a.setAttribute("data-qmnc","1");a.setAttribute("href","#/cart");a.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();location.hash="#/cart";busy=0;cur="";sched()},true);a.innerHTML='<span class="nav-badge"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"></circle><circle cx="18" cy="20" r="1.5"></circle><path d="M3 4h2.5l2.2 11h10.6l2-8H6.5"></path></svg></span>Корзина'}
@@ -2392,10 +2392,10 @@ function trackVisit(){try{var pp=path(),m=pp.match(/^\/businesses\/([^\/]+)$/),c
 trackVisit();window.addEventListener("hashchange",trackVisit);
 VIEWS["/admin/managers"]=async function(){
   var u=me();if(!u||!u.admin)return head("Менеджеры организаций","/admin")+'<div class="qm-card">Только для администратора.</div>';
-  var orgs=(await gQuery("organizations",[])).sort(function(a,b){return String(a.name).localeCompare(String(b.name),"ru")}),deals=await gQuery("mgrDeals",[]),vs=[],acs=[];
-  try{vs=await gQuery("orgVisits",[])}catch(e){}try{acs=await gQuery("mgrAcc",[])}catch(e){}
+  var bad=[];async function sq(n){try{return await gQuery(n,[])}catch(e){bad.push(n);console.warn(n,e);return []}}
+  var orgs=(await sq("organizations")).sort(function(a,b){return String(a.name).localeCompare(String(b.name),"ru")}),deals=await sq("mgrDeals"),vs=await sq("orgVisits"),acs=await sq("mgrAcc");
   var ed=deals.find(function(d){return d.id===qs().get("e")})||{},fp0=ed.orgId?ed.orgId:"";
-  var h=head("Менеджеры организаций","/admin")+'<div class="qm-muted" style="margin-bottom:8px">Менеджер приводит клиентов по своей ссылке. Когда заказ клиента выдан по QR, менеджеру начисляется процент. Деньги платите вы из комиссии приложения, организация доплачивать не должна.</div>';
+  var h=head("Менеджеры организаций","/admin")+(bad.length?'<div class="qm-card" style="border-color:#b42318;margin-bottom:10px"><b>Не хватает прав в базе</b><div class="qm-muted">Firestore не даёт читать: '+bad.map(esc).join(", ")+'. Откройте Firebase → Firestore → Правила, вставьте целиком актуальный файл firestore-rules-full.txt и нажмите «Опубликовать». Также проверьте, что вы вошли под адресом администратора.</div></div>':'')+'<div class="qm-muted" style="margin-bottom:8px">Менеджер приводит клиентов по своей ссылке. Когда заказ клиента выдан по QR, менеджеру начисляется процент. Деньги платите вы из комиссии приложения, организация доплачивать не должна.</div>';
   h+='<form data-pform="mgrDeal" class="qm-card"><b>Условия для менеджера и организации</b><label class="qm-f" style="margin-top:8px">Организация<select name="org" required><option value="masters"'+(fp0==="masters"?' selected':'')+'>🔧 Мастера и автосервисы (заявки)</option>'+orgs.map(function(o){return '<option value="'+esc(o.id)+'"'+(o.id===fp0?' selected':'')+'>'+esc(o.name)+'</option>'}).join("")+'</select></label><label class="qm-f">Код менеджера (из раздела «Баллы»)<input name="code" required maxlength="8" autocapitalize="characters" value="'+esc(ed.code||"")+'"></label><label class="qm-f">Процент менеджеру, %<input name="pct" type="number" min="0.5" max="30" step="0.5" required value="'+(ed.pct||1)+'"></label><label class="qm-f">За что платить<select name="mode"><option value="all">За все покупки клиента</option><option value="first"'+(ed.mode==="first"?' selected':'')+'>Только за первую покупку</option></select></label><label class="qm-f">Срок после перехода клиента, дней (0 = бессрочно)<input name="days" type="number" min="0" max="3650" value="'+(ed.days||0)+'"></label><label class="qm-f"><span><input type="checkbox" name="active" style="width:20px;height:20px;display:inline-block;vertical-align:middle;margin-right:6px"'+(ed.id&&!ed.active?'':' checked')+'> Условия действуют</span></label><div class="qm-muted" style="margin:4px 0 8px">Комиссия организации должна быть выше, чем баллы клиенту + процент менеджеру. Если для пары уже есть условия, они заменятся.</div><button class="btn btn-primary" type="submit">Сохранить условия</button></form>';
   h+='<div class="qm-card" style="margin-top:10px"><b>Действующие условия</b>';
   if(!deals.length)h+='<div class="qm-muted" style="margin-top:6px">Пока нет</div>';
@@ -2416,7 +2416,7 @@ PF.mgrDeal=async function(fd,f,u){if(!u.admin)throw new Error("Нет прав")
   if(isM){if(pct>=FEE_RATE*100)throw new Error("Комиссия мастеров "+Math.round(FEE_RATE*100)+"%. Процент менеджеру должен быть ниже.");mode="all"}
   var R=isM?{earnPct:0}:await getRules(oid),fp=isM?Math.round(FEE_RATE*100):await feePct(oid);if(fp<=R.earnPct+pct)throw new Error("Комиссия организации "+fp+"% должна быть выше, чем баллы клиенту "+R.earnPct+"% + менеджеру "+pct+"% = "+(R.earnPct+pct)+"%. Поднимите комиссию в «Комиссии магазинов» или уменьшите процент.");
   var id=oid+"_"+rc.uid,old=await gGet("mgrDeals",id);
-  await commit([{t:"set",n:"mgrDeals",id:id,data:{orgId:oid,orgName:org.name,ownerId:org.ownerId,managerUid:rc.uid,managerName:rc.name||"",code:code,pct:pct,mode:mode,days:days,active:!!fd.get("active"),createdAt:old?old.createdAt:Date.now(),updatedAt:Date.now(),by:u.uid}}]);
+  try{await commit([{t:"set",n:"mgrDeals",id:id,data:{orgId:oid,orgName:org.name,ownerId:org.ownerId,managerUid:rc.uid,managerName:rc.name||"",code:code,pct:pct,mode:mode,days:days,active:!!fd.get("active"),createdAt:old?old.createdAt:Date.now(),updatedAt:Date.now(),by:u.uid}}])}catch(e){if(e&&e.code==="permission-denied")throw new Error("Firestore не разрешил запись условий. Вставьте в Firebase актуальные правила (файл firestore-rules-full.txt) и повторите.");throw e}
   location.hash="#/admin/managers";return "Условия сохранены: "+(rc.name||code)+" — "+pct+"%"};
 ACT.mdToggle=async function(id){var d=await gGet("mgrDeals",id);if(!d)return;await gPatch("mgrDeals",id,{active:!d.active,updatedAt:Date.now()});toast(d.active?"Выключено":"Включено")};
 ACT.mdPay=async function(id){var d=await gGet("mgrDeals",id);if(!d)return;var ac=(await gQuery("mgrAcc",[])).filter(function(a){return a.orgId===d.orgId&&a.managerUid===d.managerUid&&a.status==="due"&&!a.paid}),t=ac.reduce(function(s,a){return s+a.amount},0);if(!ac.length)return;if(!confirm("Отметить выплаченными "+ac.length+" начислений на "+money(t)+" для "+d.managerName+"?"))return;var now=Date.now();await commit(ac.map(function(a){return {t:"patch",n:"mgrAcc",id:a.id,p:{paid:true,status:"paid",paidAt:now}}}));toast("Выплата отмечена")};
@@ -2463,10 +2463,10 @@ function hubHtml(){var u=me();if(!u)return '';var r=NTR||{},m=r.master,h='',nw=[
     (r.org?hubTile('#/points/rules','🎯','Лояльность','Проценты и условия',0):'')+
     (r.mgr?hubTile('#/manager','🤝','Менеджер','Переходы и выплаты',NT.mg):'')+'</div>';
   if(!isStandalone())h+='<div class="qm-hubh">Приложение</div><div class="qm-hub"><a class="qm-tile" href="#/download"><span class="ic">📲</span><b>Скачать приложение</b><small>Android, iPhone</small></a></div>';
-  h+='<div class="qm-hubh">Данные</div><div class="qm-hub"><a class="qm-tile" href="#/privacy"><span class="ic">🔒</span><b>Конфиденциальность</b><small>Какие данные храним</small></a><a class="qm-tile" href="javascript:void(0)" data-act="delAcc"><span class="ic">🗑</span><b>Удалить аккаунт</b><small>Профиль и анкету</small></a></div>';
-  if(u.admin)h+='<div class="qm-hubh">Администратор</div><div class="qm-hub">'+hubTile('#/admin/masters','🛠','Проверки','Мастера, отзывы, партнёры',NT.adm+PNA)+hubTile('#/admin/shops','💰','Комиссии','Магазины и оплаты',0)+hubTile('#/admin/managers','🤝','Менеджеры','Условия и выплаты',0)+hubTile('#/admin/points','📊','Баллы','Все начисления',0)+'</div>';
+  h+='<div class="qm-hubh">Данные</div><div class="qm-hub"><a class="qm-tile" href="javascript:void(0)" data-act="delAcc"><span class="ic">🗑</span><b>Удалить аккаунт</b><small>Профиль и анкету</small></a></div>';
+  if(u.admin)h+='<div class="qm-hubh">Администратор</div><div class="qm-hub">'+hubTile('#/admin','🛠','Админ-панель','Проверки, мастера, отзывы',NT.adm+PNA)+hubTile('#/admin/shops','💰','Комиссии','Магазины и оплаты',0)+hubTile('#/admin/managers','🤝','Менеджеры','Условия и выплаты',0)+hubTile('#/admin/points','📊','Начисления','Баллы всех клиентов',0)+'</div>';
   return h}
-function updNT(){var c=document.querySelector("[data-qmp]");if(c&&me()){var h=hubHtml();if(c.__h!==h){c.innerHTML=h;c.__h=h}}try{applyBadge()}catch(e){}}
+function updNT(){try{hideDupes()}catch(e){}var c=document.querySelector("[data-qmp]");if(c&&me()){var h=hubHtml();if(c.__h!==h){c.innerHTML=h;c.__h=h}}try{applyBadge()}catch(e){}}
 ["/orders:cl","/shop-orders:so","/manager:mg"].forEach(function(s){var a=s.split(":"),f=VIEWS[a[0]];if(f)VIEWS[a[0]]=async function(){try{ntMark(a[1])}catch(e){}return f.apply(this,arguments)}});
 function ntStart(){if(NTP)return;NTP=1;setTimeout(function(){ntCheck(true)},1200);setInterval(function(){ntCheck(false)},60000);document.addEventListener("visibilitychange",function(){if(!document.hidden)ntCheck(false)})}
 
@@ -2522,7 +2522,7 @@ async function pushInit(){var PN=CP("PushNotifications"),u=me();if(!CAP||!PN||!u
     await PN.register()}catch(e){console.warn("push",e)}}
 
 /* ===== СКАЧАТЬ ПРИЛОЖЕНИЕ ===== */
-var APP_VER=1,APK_URL="https://github.com/cabelNL/Qalapvl/releases/latest/download/qala-pvl.apk",SITE_URL="https://cabelnl.github.io/Qalapvl/";
+var QM_BUILD="10.11 07:35",APP_VER=1,APK_URL="https://github.com/cabelNL/Qalapvl/releases/latest/download/qala-pvl.apk",SITE_URL="https://cabelnl.github.io/Qalapvl/";
 VIEWS["/download"]=async function(){
   var ios=isIOS(),and=/android/i.test(navigator.userAgent),h=head("Скачать приложение","/profile");
   function step(n,t){return '<div style="display:flex;flex-wrap:nowrap;gap:10px;align-items:flex-start;margin-top:10px"><b class="qm-num">'+n+'</b><span style="flex:1;line-height:1.4">'+t+'</span></div>'}
@@ -2547,6 +2547,17 @@ function enhAutoForm(){var s=document.querySelector("form select[name=spec]");if
   if(a&&(a.style.display==="block")!==au)a.style.display=au?"block":"none";
   if(na){var shown=na.style.display!=="none";if(shown===au){na.style.display=au?"none":"block";var ai=na.querySelector("input");if(ai)ai.required=!au}}}
 ["change","input","click","touchend","blur"].forEach(function(ev){document.addEventListener(ev,function(){setTimeout(enhAutoForm,30)},true)});
+
+function showUpd(msg,href){if(document.getElementById("qm-upd"))return;var d=document.createElement("div");d.id="qm-upd";d.innerHTML='<span>'+msg+'</span>'+(href?'<a href="'+esc(href)+'" target="_blank" rel="noopener">Скачать</a>':'<a href="javascript:void(0)" data-act="reloadNew">Обновить</a>')+'<b onclick="this.parentNode.remove()">×</b>';document.body.appendChild(d)}
+ACT.reloadNew=async function(){try{if(window.caches){var ks=await caches.keys();await Promise.all(ks.map(function(k){return caches.delete(k)}))}}catch(e){}try{if(navigator.serviceWorker){var rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(function(r){return r.update()}))}}catch(e){}
+  var u=new URL(location.href);u.searchParams.set("v",Date.now());location.replace(u.toString())};
+var LASTVC=0;
+function checkWebVer(){if(CAP||location.protocol.indexOf("http")!==0||Date.now()-LASTVC<120000)return;LASTVC=Date.now();
+  fetch(new URL("version.json",location.href).toString().split("?")[0]+"?t="+Date.now(),{cache:"no-store"}).then(function(r){return r.json()}).then(function(j){if(j&&j.build&&j.build!==QM_BUILD)showUpd("🆕 Вышло обновление сайта")}).catch(function(){})}
+setTimeout(checkWebVer,5000);document.addEventListener("visibilitychange",function(){if(!document.hidden)checkWebVer()});
+
+var DUPL=/^(Мой бизнес|Админ-панель|Бонусы и друзья)/;
+function hideDupes(){var c=document.querySelector("[data-qmp]");if(!c||!me())return;[].forEach.call(document.querySelectorAll("main.page a"),function(a){if(c.contains(a)||a.__dh)return;var t=(a.textContent||"").replace(/\s+/g," ").trim();if(!DUPL.test(t))return;a.style.display="none";a.__dh=1})}
 var BUYP=0;
 var BUYACT=1,BUYL=0;
 async function checkBuyer(){var u=me();if(!u||document.hidden)return;if(!BUYACT&&Date.now()-BUYL<300000)return;BUYL=Date.now();
@@ -2637,7 +2648,7 @@ function diag(){
 }
 window.__qcUid=function(){try{var x=me();return x&&x.uid||""}catch(e){return ""}};var raf=0;
 function sync(){raf=0;try{ensureManager();render(false).catch(function(e){console.warn(e);showErr(e)})}catch(e){console.warn(e);showErr(e)}
-  [injectNav,function(){drawReviews(false)},injectRatings,enhLogin,enhHours,enhAdminPhoto,revTabSync,enhPartnerNav,ensureRefLink,enhShopNav,enhCart,enhCartIcon,enhAutoForm].forEach(function(fn){try{var r=fn();if(r&&r.catch)r.catch(function(e){console.warn(e)})}catch(e){console.warn(e)}})}
+  [injectNav,function(){drawReviews(false)},injectRatings,enhLogin,enhHours,enhAdminPhoto,revTabSync,enhPartnerNav,ensureRefLink,enhShopNav,enhCart,enhCartIcon,enhAutoForm,hideDupes].forEach(function(fn){try{var r=fn();if(r&&r.catch)r.catch(function(e){console.warn(e)})}catch(e){console.warn(e)}})}
 function showErr(e){var m=$("main.page");if(!m||!VIEWS[path()])return;var v=$("#qm-view");if(!v){v=document.createElement("div");v.id="qm-view";v.className="container";m.appendChild(v)}v.innerHTML='<div class="qm-card">Не удалось открыть раздел: '+esc(errText(e))+'</div>'}
 function sched(){if(!raf)raf=requestAnimationFrame(sync)}
 window.addEventListener("hashchange",function(){busy=0;sched()});
