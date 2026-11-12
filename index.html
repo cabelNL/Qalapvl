@@ -2169,6 +2169,16 @@ function enhWeather(){
  if(!old){old=document.createElement("span");old.id="qm-wx";old.title="Погода в Павлодаре";old.style.cssText="font-size:13px;font-weight:500;color:#7a8799;white-space:nowrap;padding:0 4px;align-self:center";box.insertBefore(old,box.firstChild)}
  else if(old.parentNode!==box)box.insertBefore(old,box.firstChild);
  var h=wxTxt(WX);if(old.textContent!==h)old.textContent=h}
+/* баннер «Скачать приложение» на главной */
+function enhDlBanner(){var old=document.getElementById("qm-dl");
+  var ok=!isStandalone()&&!window.Capacitor&&path()==="/";try{if(ok&&localStorage.getItem("qm:dlx")&&Date.now()-Number(localStorage.getItem("qm:dlx"))<7*864e5)ok=false}catch(e){}
+  if(!ok){if(old)old.remove();return}
+  var hero=document.querySelector("section.hero");if(!hero)return;
+  if(old&&old.previousElementSibling===hero)return;if(old)old.remove();
+  var d=document.createElement("a");d.id="qm-dl";d.href="#/download";d.style.cssText="display:flex;align-items:center;gap:10px;margin:10px 0 0;padding:10px 12px;border-radius:14px;background:#fff;border:1px solid #dbe4ee;color:#16324f;text-decoration:none;font-size:14px";
+  d.innerHTML='<span style="font-size:22px">📲</span><span style="flex:1;line-height:1.25"><b>Скачать приложение</b><br><span style="opacity:.7;font-size:12px">Быстрее сайта, с уведомлениями</span></span><span class="btn btn-primary btn-sm" style="pointer-events:none">Скачать</span><b id="qm-dlx" style="padding:4px 6px;opacity:.5">×</b>';
+  d.addEventListener("click",function(e){if(e.target.id==="qm-dlx"){e.preventDefault();try{localStorage.setItem("qm:dlx",String(Date.now()))}catch(x){}d.remove()}});
+  hero.insertAdjacentElement("afterend",d)}
 function enhHours(){
   var f=fieldByLabel(/^Режим работы/);var w=$("#qm-wh");
   if(!f){if(w)w.remove();WH=null;return}
@@ -2345,7 +2355,7 @@ document.addEventListener("click",function(e){var t=e.target.closest&&e.target.c
   setTimeout(function(){busy=0;cur="";sched()},400)},true);
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&path()==="/cart"){busy=0;cur="";sched()}});
 document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("[data-cartsend]");if(a&&noSize(cartGroups()[a.getAttribute("data-cartsend")]||[])){e.preventDefault();e.stopPropagation();toast("Выберите размер у товаров",1);return}if(a){var id=a.getAttribute("data-cartsend");SENT[id]=sig(cartGroups()[id]||[]);sentSave();setTimeout(function(){a.textContent="✓ Отправлено · отправить снова"},200)}});
-function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 12.11 17:16";f.appendChild(d)}
+function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 12.11 19:32";f.appendChild(d)}
 function enhNavCart(){
   var bn=document.querySelector(".bottomnav");if(bn){var a=bn.querySelector("a[data-qmnc]")||bn.querySelector('a[href="#/map"]');
     if(a){if(!a.hasAttribute("data-qmnc")){a.setAttribute("data-qmnc","1");a.setAttribute("href","#/cart");a.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();location.hash="#/cart";busy=0;cur="";sched()},true);a.innerHTML='<span class="nav-badge"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"></circle><circle cx="18" cy="20" r="1.5"></circle><path d="M3 4h2.5l2.2 11h10.6l2-8H6.5"></path></svg></span>Корзина'}
@@ -2828,7 +2838,7 @@ async function pushInit(){var PN=CP("PushNotifications"),u=me();if(!CAP||!PN||!u
     await PN.register()}catch(e){console.warn("push",e)}}
 
 /* ===== СКАЧАТЬ ПРИЛОЖЕНИЕ ===== */
-var QM_BUILD="12.11 17:16",APP_VER=1,APK_URL="https://github.com/cabelNL/Qalapvl/releases/latest/download/qala-pvl.apk",SITE_URL="https://cabelnl.github.io/Qalapvl/";
+var QM_BUILD="12.11 19:32",APP_VER=1,APK_URL="https://github.com/cabelNL/Qalapvl/releases/latest/download/qala-pvl.apk",SITE_URL="https://cabelnl.github.io/Qalapvl/";
 VIEWS["/download"]=async function(){
   var ios=isIOS(),and=/android/i.test(navigator.userAgent),h=head("Скачать приложение","/profile");
   function step(n,t){return '<div style="display:flex;flex-wrap:nowrap;gap:10px;align-items:flex-start;margin-top:10px"><b class="qm-num">'+n+'</b><span style="flex:1;line-height:1.4">'+t+'</span></div>'}
@@ -2838,7 +2848,9 @@ VIEWS["/download"]=async function(){
     step(1,'Откройте этот сайт в <b>Safari</b>.')+step(2,'Нажмите «Поделиться» (квадрат со стрелкой внизу).')+step(3,'Выберите «На экран Домой» и нажмите «Добавить».')+step(4,'Иконка QALA PVL появится на главном экране и откроется как приложение.')+'</div>';
   var W='<div class="qm-card" style="margin-top:10px"><div class="qm-row" style="gap:10px"><span style="font-size:30px">🌐</span><div><b style="font-size:17px">Установить прямо из браузера</b><div class="qm-muted">Chrome, Edge, Samsung Internet</div></div></div><button class="btn btn-secondary" style="margin-top:12px;width:100%" data-act="install">📲 Установить приложение</button><div class="qm-muted" style="margin-top:6px">Если кнопка не сработала: меню браузера → «Установить приложение» или «Добавить на главный экран».</div></div>';
   h+='<div class="qm-muted">Приложение открывается на весь экран, быстрее сайта и присылает уведомления о заказах и заявках.</div>';
-  h+=ios?I+W+A:A+W+I;
+  var ready=false;try{var vj=await (await fetch("version.json?"+Date.now(),{cache:"no-store"})).json();ready=!!vj.apkReady}catch(e){}
+  if(!ready){A='<div class="qm-card" style="margin-top:10px"><div class="qm-row" style="gap:10px"><span style="font-size:30px">🤖</span><div><b style="font-size:17px">Android</b><div class="qm-muted">Установка прямо из браузера Chrome</div></div></div>'+step(1,'Нажмите кнопку «Установить приложение» в карточке выше.')+step(2,'Подтвердите установку. Если кнопка не сработала: меню браузера (три точки) → «Установить приложение» или «Добавить на главный экран».')+step(3,'Иконка QALA PVL появится на экране телефона и откроется как обычное приложение.')+'</div>'}
+  h+=ios?I+W:ready?A+W+I:W+A+I;
   h+='<div class="qm-card" style="margin-top:10px"><b>Отправить ссылку другу</b><div class="qm-muted" style="margin:4px 0 8px">'+esc(SITE_URL+"#/download")+'</div><button class="btn btn-ghost" data-act="shareApp">Поделиться ссылкой</button></div>';
   return h};
 ACT.shareApp=async function(){var link=SITE_URL+"#/download",t="Скачайте приложение QALA PVL: организации, товары и мастера Павлодара";try{if(navigator.share){await navigator.share({title:"QALA PVL",text:t,url:link});return}}catch(e){if(e&&e.name==="AbortError")return}try{await navigator.clipboard.writeText(t+" "+link);toast("Ссылка скопирована")}catch(e){prompt("Скопируйте ссылку",link)}};
@@ -2971,7 +2983,7 @@ function diag(){
 }
 window.__qcUid=function(){try{var x=me();return x&&x.uid||""}catch(e){return ""}};var raf=0;
 function sync(){raf=0;try{ensureManager();render(false).catch(function(e){console.warn(e);showErr(e)})}catch(e){console.warn(e);showErr(e)}
-  [injectNav,function(){drawReviews(false)},injectRatings,enhLogin,enhAuthAlt,enhPinOffer,enhWeather,enhHours,enhAdminPhoto,revTabSync,enhPartnerNav,ensureRefLink,enhShopNav,enhCart,enhCartIcon,enhAutoForm,hideDupes].forEach(function(fn){try{var r=fn();if(r&&r.catch)r.catch(function(e){console.warn(e)})}catch(e){console.warn(e)}})}
+  [injectNav,function(){drawReviews(false)},injectRatings,enhLogin,enhAuthAlt,enhPinOffer,enhWeather,enhDlBanner,enhHours,enhAdminPhoto,revTabSync,enhPartnerNav,ensureRefLink,enhShopNav,enhCart,enhCartIcon,enhAutoForm,hideDupes].forEach(function(fn){try{var r=fn();if(r&&r.catch)r.catch(function(e){console.warn(e)})}catch(e){console.warn(e)}})}
 function showErr(e){var m=$("main.page");if(!m||!VIEWS[path()])return;var v=$("#qm-view");if(!v){v=document.createElement("div");v.id="qm-view";v.className="container";m.appendChild(v)}v.innerHTML='<div class="qm-card">Не удалось открыть раздел: '+esc(errText(e))+'</div>'}
 function sched(){if(!raf)raf=requestAnimationFrame(sync)}
 window.addEventListener("hashchange",function(){busy=0;sched()});
