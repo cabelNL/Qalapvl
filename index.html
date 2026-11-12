@@ -2161,15 +2161,14 @@ function wxLoad(){if(WXBusy||Date.now()-WXT<600000)return;WXBusy=true;
  fetch("https://api.open-meteo.com/v1/forecast?latitude=52.2873&longitude=76.9674&current=temperature_2m,apparent_temperature,weather_code,is_day&timezone=Asia%2FAlmaty").then(function(r){return r.json()}).then(function(j){var c=j&&j.current;if(!c||typeof c.temperature_2m!=="number")throw 0;WX={t:Date.now(),temp:c.temperature_2m,feel:c.apparent_temperature,code:c.weather_code,day:c.is_day};WXT=WX.t;try{localStorage.setItem("qm:wx",JSON.stringify(WX))}catch(e){}WXBusy=false;enhWeather()}).catch(function(){WXBusy=false;WXT=Date.now()-540000})}
 function wxTxt(w){var t=Math.round(w.temp);return(t>0?"+":t<0?"−":"")+Math.abs(t)+"°"}
 function enhWeather(){
- var f=document.querySelector(".hero form.searchbox");var old=document.getElementById("qm-wx");
- if(!f){if(old)old.remove();return}
+ var old=document.getElementById("qm-wx");var box=document.querySelector(".topbar .top-actions");
+ var hr=document.querySelector(".hero #qm-wx");if(hr)hr.remove();
+ if(!box){return}
  wxLoad();
  if(!WX){if(old)old.remove();return}
- if(!old){old=document.createElement("div");old.id="qm-wx";old.style.cssText="display:inline-flex;align-items:center;gap:6px;align-self:flex-start;margin:0 0 8px;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.9);color:#16324f;font-size:13px;font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,.12)";f.parentNode.insertBefore(old,f)}
- else if(old.nextSibling!==f)f.parentNode.insertBefore(old,f);
- var h='<span style="font-size:16px">'+wxIcon(WX.code,WX.day)+'</span><span>Павлодар '+wxTxt(WX)+'</span>';
- if(typeof WX.feel==="number"&&Math.abs(WX.feel-WX.temp)>=2)h+='<span style="font-weight:400;opacity:.7">ощущ. '+wxTxt({temp:WX.feel})+'</span>';
- if(old.innerHTML!==h)old.innerHTML=h}
+ if(!old){old=document.createElement("span");old.id="qm-wx";old.title="Погода в Павлодаре";old.style.cssText="font-size:13px;font-weight:500;color:#7a8799;white-space:nowrap;padding:0 4px;align-self:center";box.insertBefore(old,box.firstChild)}
+ else if(old.parentNode!==box)box.insertBefore(old,box.firstChild);
+ var h=wxTxt(WX);if(old.textContent!==h)old.textContent=h}
 function enhHours(){
   var f=fieldByLabel(/^Режим работы/);var w=$("#qm-wh");
   if(!f){if(w)w.remove();WH=null;return}
@@ -2346,7 +2345,7 @@ document.addEventListener("click",function(e){var t=e.target.closest&&e.target.c
   setTimeout(function(){busy=0;cur="";sched()},400)},true);
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&path()==="/cart"){busy=0;cur="";sched()}});
 document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("[data-cartsend]");if(a&&noSize(cartGroups()[a.getAttribute("data-cartsend")]||[])){e.preventDefault();e.stopPropagation();toast("Выберите размер у товаров",1);return}if(a){var id=a.getAttribute("data-cartsend");SENT[id]=sig(cartGroups()[id]||[]);sentSave();setTimeout(function(){a.textContent="✓ Отправлено · отправить снова"},200)}});
-function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 12.11 12:33";f.appendChild(d)}
+function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 12.11 13:19";f.appendChild(d)}
 function enhNavCart(){
   var bn=document.querySelector(".bottomnav");if(bn){var a=bn.querySelector("a[data-qmnc]")||bn.querySelector('a[href="#/map"]');
     if(a){if(!a.hasAttribute("data-qmnc")){a.setAttribute("data-qmnc","1");a.setAttribute("href","#/cart");a.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();location.hash="#/cart";busy=0;cur="";sched()},true);a.innerHTML='<span class="nav-badge"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"></circle><circle cx="18" cy="20" r="1.5"></circle><path d="M3 4h2.5l2.2 11h10.6l2-8H6.5"></path></svg></span>Корзина'}
@@ -2829,7 +2828,7 @@ async function pushInit(){var PN=CP("PushNotifications"),u=me();if(!CAP||!PN||!u
     await PN.register()}catch(e){console.warn("push",e)}}
 
 /* ===== СКАЧАТЬ ПРИЛОЖЕНИЕ ===== */
-var QM_BUILD="12.11 12:33",APP_VER=1,APK_URL="https://github.com/cabelNL/Qalapvl/releases/latest/download/qala-pvl.apk",SITE_URL="https://cabelnl.github.io/Qalapvl/";
+var QM_BUILD="12.11 13:19",APP_VER=1,APK_URL="https://github.com/cabelNL/Qalapvl/releases/latest/download/qala-pvl.apk",SITE_URL="https://cabelnl.github.io/Qalapvl/";
 VIEWS["/download"]=async function(){
   var ios=isIOS(),and=/android/i.test(navigator.userAgent),h=head("Скачать приложение","/profile");
   function step(n,t){return '<div style="display:flex;flex-wrap:nowrap;gap:10px;align-items:flex-start;margin-top:10px"><b class="qm-num">'+n+'</b><span style="flex:1;line-height:1.4">'+t+'</span></div>'}
