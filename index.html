@@ -2359,7 +2359,7 @@ document.addEventListener("click",function(e){var t=e.target.closest&&e.target.c
   setTimeout(function(){busy=0;cur="";sched()},400)},true);
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&path()==="/cart"){busy=0;cur="";sched()}});
 document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("[data-cartsend]");if(a&&noSize(cartGroups()[a.getAttribute("data-cartsend")]||[])){e.preventDefault();e.stopPropagation();toast("Выберите размер у товаров",1);return}if(a){var id=a.getAttribute("data-cartsend");SENT[id]=sig(cartGroups()[id]||[]);sentSave();setTimeout(function(){a.textContent="✓ Отправлено · отправить снова"},200)}});
-function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 13.11 11:46";f.appendChild(d)}
+function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 13.11 12:25";f.appendChild(d)}
 function enhNavCart(){
   var bn=document.querySelector(".bottomnav");if(bn){var a=bn.querySelector("a[data-qmnc]")||bn.querySelector('a[href="#/map"]');
     if(a){if(!a.hasAttribute("data-qmnc")){a.setAttribute("data-qmnc","1");a.setAttribute("href","#/cart");a.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();location.hash="#/cart";busy=0;cur="";sched()},true);a.innerHTML='<span class="nav-badge"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"></circle><circle cx="18" cy="20" r="1.5"></circle><path d="M3 4h2.5l2.2 11h10.6l2-8H6.5"></path></svg></span>Корзина'}
@@ -2775,7 +2775,7 @@ function hubHtml(){var u=me();if(!u)return '';var r=NTR||{},m=r.master,h='',nw=[
     (r.org?hubTile('#/points/cash','💳','Касса','Баллы клиента по QR',0):'')+
     (r.org?hubTile('#/points/rules','🎯','Лояльность','Проценты и условия',0):'')+
     (r.mgr?hubTile('#/manager','🤝','Менеджер','Переходы и выплаты',NT.mg):hubTile('#/manager/find','🤝','Стать менеджером','Выберите выгодные условия',NT.mg))+'</div>';
-  var ws=wpState();if(ws==="off"||ws==="ios-install"||ws==="denied")h+='<div class="qm-hubh">Уведомления</div><div class="qm-hub"><a class="qm-tile" href="javascript:void(0)" data-act="pushOn"><span class="ic">🔔</span><b>Включить уведомления</b><small>'+(ws==="denied"?'Запрещены в браузере':ws==="ios-install"?'Сначала установите на экран':'О заказах и заявках на телефон')+'</small></a></div>';
+  var ws=wpState();if(window.__pushOk===true&&(ws==="off"||ws==="ios-install"||ws==="denied"))h+='<div class="qm-hubh">Уведомления</div><div class="qm-hub"><a class="qm-tile" href="javascript:void(0)" data-act="pushOn"><span class="ic">🔔</span><b>Включить уведомления</b><small>'+(ws==="denied"?'Запрещены в браузере':ws==="ios-install"?'Сначала установите на экран':'О заказах и заявках на телефон')+'</small></a></div>';
   if(!isStandalone())h+='<div class="qm-hubh">Приложение</div><div class="qm-hub"><a class="qm-tile" href="#/download"><span class="ic">📲</span><b>Скачать приложение</b><small>Android, iPhone</small></a></div>';
   var ph=myPhone();h+='<div class="qm-hubh">Данные</div><div class="qm-hub"><a class="qm-tile" href="javascript:void(0)" data-act="sndToggle"><span class="ic">'+(sndPref()?'🔔':'🔕')+'</span><b>Звук уведомлений</b><small>'+(sndPref()?'Включён — нажмите, чтобы выключить':'Выключен — нажмите, чтобы включить')+'</small></a><a class="qm-tile" href="javascript:void(0)" data-act="pinMenu"><span class="ic">🔢</span><b>Код быстрого входа</b><small>'+(qpUser()&&qpHas(qpUser().uid)?'Включён — сменить или отключить':'Вход по 4 цифрам')+'</small></a>'+(QA_PHONE?'<a class="qm-tile" href="javascript:void(0)" data-act="phoneLink"><span class="ic">📱</span><b>Телефон</b><small>'+(ph?esc(ph)+' — для входа и восстановления':'Привязать для входа по SMS')+'</small></a>':'')+'<a class="qm-tile" href="javascript:void(0)" data-act="delAcc"><span class="ic">🗑</span><b>Удалить аккаунт</b><small>Профиль и анкету</small></a></div>';
   if(u.admin)h+='<div class="qm-hubh">Администратор</div><div class="qm-hub">'+hubTile('#/admin','🛠','Админ-панель','Проверки, мастера, отзывы',NT.adm+PNA)+hubTile('#/admin/shops','💰','Комиссии','Магазины и оплаты',0)+hubTile('#/admin/managers','🤝','Менеджеры','Условия и выплаты',0)+hubTile('#/admin/points','📊','Начисления','Баллы всех клиентов',0)+'</div>';
@@ -2851,7 +2851,7 @@ async function pushInit(){var PN=CP("PushNotifications"),u=me();if(!CAP||!PN||!u
     await PN.register()}catch(e){console.warn("push",e)}}
 
 /* ===== СКАЧАТЬ ПРИЛОЖЕНИЕ ===== */
-var QM_BUILD="13.11 11:46",APP_VER=1,APK_URL="https://github.com/cabelNL/Qalapvl/releases/latest/download/qala-pvl.apk",SITE_URL="https://cabelnl.github.io/Qalapvl/";
+var QM_BUILD="13.11 12:25",APP_VER=1,APK_URL="https://github.com/cabelNL/Qalapvl/releases/latest/download/qala-pvl.apk",SITE_URL="https://cabelnl.github.io/Qalapvl/";
 VIEWS["/download"]=async function(){
   var ios=isIOS(),and=/android/i.test(navigator.userAgent),h=head("Скачать приложение","/profile");
   function step(n,t){return '<div style="display:flex;flex-wrap:nowrap;gap:10px;align-items:flex-start;margin-top:10px"><b class="qm-num">'+n+'</b><span style="flex:1;line-height:1.4">'+t+'</span></div>'}
@@ -2903,6 +2903,7 @@ async function wpRegister(ask){var f=mode(),u=me();if(!f||!u)throw new Error("В
   await gSet("pushTokens",u.uid+"_"+h.toString(36),{uid:u.uid,token:tk,platform:"web",updatedAt:Date.now()});localStorage.setItem("qm:wp:"+u.uid,"1");
   if(!window.__wpMsg){window.__wpMsg=1;M.onMessage(msg,function(p){var d=(p&&p.data)||{},n=(p&&p.notification)||{};toast("🔔 "+(d.title||n.title||"")+(d.body||n.body?": "+(d.body||n.body):""));ntCheck(true)})}
   try{updNT()}catch(e){}}
+(function(){try{fetch("push-config.json?t="+Date.now(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(c){if(c&&c.vapidKey){window.__pushOk=true;try{updNT()}catch(e){}}}).catch(function(){})}catch(e){}})();
 ACT.pushOn=async function(){await wpRegister(true);toast("Уведомления включены")};
 if("serviceWorker" in navigator){navigator.serviceWorker.addEventListener("message",function(e){if(e.data&&e.data.route){location.hash=e.data.route;ntCheck(true)}})}
 var WPU="";function wpInit(){var u=me();if(!u||CAP||WPU===u.uid)return;WPU=u.uid;if(wpSupported()&&Notification.permission==="granted")wpRegister(false).catch(function(){})}
