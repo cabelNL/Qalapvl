@@ -931,7 +931,7 @@ main.page{padding-bottom:calc(var(--nav-h) + 40px + env(safe-area-inset-bottom))
 .qm-st{display:inline-block;padding:3px 10px;font-size:12px;background:var(--brand-50);color:var(--brand)}
 .qm-st.ok{background:#e3f5ee;color:#0e7a54}.qm-st.warn{background:#fff3d4;color:#9a6700}.qm-st.bad{background:#fdeceb;color:#b42318}
 .price-big,.qm-price{letter-spacing:-.02em;font-weight:800}
-.toast,.qm-toast{border-radius:16px!important;background:rgba(15,27,51,.92)!important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 12px 30px rgba(15,30,70,.3)}
+.toasts{top:calc(env(safe-area-inset-top,0px) + 10px)!important;bottom:auto!important;pointer-events:none!important}.qm-toast{top:calc(env(safe-area-inset-top,0px) + 10px)!important;bottom:auto!important;pointer-events:none}.toast,.qm-toast{border-radius:16px!important;background:rgba(15,27,51,.92)!important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 12px 30px rgba(15,30,70,.3)}
 .hero{border-radius:28px!important}
 .qm-promo{border-radius:22px!important}
 .section-head h2{letter-spacing:-.02em}
@@ -2187,7 +2187,7 @@ function enhDlBanner(){var old=document.getElementById("qm-dl");
   d.addEventListener("click",function(e){if(e.target.id==="qm-dlx"){e.preventDefault();try{localStorage.setItem("qm:dlx",String(Date.now()))}catch(x){}d.remove();return}
     if(DIP){e.preventDefault();ACT.install()}else if(isIOS()){e.preventDefault();iosGuide()}});
   hero.insertAdjacentElement("afterend",d)}
-function dlRefresh(){var b=document.getElementById("dl-box");if(!b)return;var f=b.closest("form"),r=f&&f.querySelector('input[name=delivery]:checked'),del=r?r.value:"pickup";
+function dlRefresh(){var b=document.getElementById("dl-box");if(!b)return;var f=b.closest("form"),r=f&&f.querySelector('input[name=delivery]:checked'),del=r?r.value:"pickup";var al=f.querySelector("[data-adr]");if(al)al.style.display=del==="courier"?"block":"none";
   var sum=Number(b.dataset.sum),fee=Number(b.dataset.fee),ask=b.dataset.ask==="1",fr=Number(b.dataset.free),sp=Math.max(0,Math.round(Number(f.elements.spend&&f.elements.spend.value)||0)),h="";
   if(del!=="courier"){h='<div class="qm-muted">Самовывоз — доставка не нужна.</div>'}
   else{var free=fr>0&&sum>=fr;
@@ -2357,9 +2357,9 @@ VIEWS["/cart"]=async function(){
     items.forEach(function(i){h+='<div class="qm-rev" style="display:flex;gap:10px;align-items:center">'+(i.img?'<img src="'+esc(i.img)+'" alt="" style="width:52px;height:52px;object-fit:cover;border-radius:10px">':'')+'<div style="flex:1;min-width:0"><a href="#/products/'+esc(i.id)+'">'+esc(i.title)+'</a><div class="qm-muted">'+money(i.price)+esc(i.unit)+'</div>'+(addTxt(i)?'<div class="qm-muted">+ '+esc(addTxt(i))+'</div>':'')+((i.sizes&&i.sizes.length)?'<select class="input" data-size="'+esc(ck(i))+'" style="margin-top:4px;padding:4px 8px;width:auto"><option value="">Размер: выберите</option>'+i.sizes.map(function(z){return '<option'+(i.size===z?" selected":"")+'>'+esc(z)+'</option>'}).join("")+'</select>':"")+'</div><div class="qm-row" style="gap:4px"><button class="btn btn-secondary btn-sm" data-act="cartDec" data-id="'+esc(ck(i))+'">−</button><input type="number" inputmode="numeric" class="input" data-qty="'+esc(ck(i))+'" min="0" max="1000000" step="1" value="'+i.qty+'" style="width:84px;text-align:center;padding:6px 4px"><button class="btn btn-secondary btn-sm" data-act="cartInc" data-id="'+esc(ck(i))+'">+</button><button class="btn btn-ghost btn-sm" data-act="cartDel" data-id="'+esc(ck(i))+'" aria-label="Удалить">✕</button></div></div>'});
     var rr=DR[id]||{},dmx=rr.delivery||"pickup";
     if(dmx!=="pickup"){var fr=rr.dFreeFrom||0,fre=fr>0&&sub>=fr;h+='<div class="qm-muted" style="margin-top:6px">🚚 Доставка: '+(fre?'<b style="color:#12805c">бесплатно</b>':rr.dFeeMode==="ask"?'цену назовёт продавец после заказа':money(rr.dFee||0))+(fr>0&&!fre?' · бесплатно от '+money(fr)+' (ещё '+money(fr-sub)+')':'')+(dmx==="both"?' · или самовывоз':'')+'</div>'}
-    h+='<a class="btn btn-primary" href="#/checkout?o='+esc(id)+'" style="margin-top:8px;display:block;text-align:center">Оформить заказ</a>';h+=lk?'<a class="btn btn-secondary" data-cartsend="'+esc(id)+'" target="_blank" rel="noopener" href="'+esc(lk)+'" style="margin-top:8px">'+(SENT[id]===sig(items)?"✓ Отправлено · отправить снова":"Отправить заявку в WhatsApp")+'</a>':'<div class="qm-muted" style="margin-top:8px">У организации не указан телефон'+(o.phone?"":"")+'. Свяжитесь через её страницу.</div>';
+    h+='<a class="btn btn-primary" href="#/checkout?o='+esc(id)+'" style="margin-top:8px;display:block;text-align:center">Оформить заказ</a>';h+='<div class="qm-muted" style="margin-top:6px">В WhatsApp продавцу заявка уйдёт при оформлении заказа.</div>';
     h+='</div>'});
-  h+='<div class="qm-card" style="margin-top:10px"><div class="qm-row qm-between" style="font-size:18px"><span>Всего ('+ids.length+' '+(ids.length===1?"продавец":"продавцов")+')</span><b>'+money(total)+'</b></div>'+(sendable>1?(left.length?'<button class="btn btn-primary" data-cartall="1" style="margin-top:8px;width:100%">Отправить всем'+(left.length<sendable?' · осталось '+left.length+' (далее: '+esc(ORGC[left[0]].name)+')':' ('+left.length+')')+'</button><div class="qm-muted" style="margin-top:4px">WhatsApp откроется для каждого продавца по очереди: вернитесь сюда и нажмите ещё раз.</div>':'<div class="qm-muted" style="margin-top:8px">✓ Заявки отправлены всем продавцам</div>'):'')+'<button class="btn btn-ghost btn-sm" data-act="cartClear" style="margin-top:6px">Очистить корзину</button></div>';
+  h+='<div class="qm-card" style="margin-top:10px"><div class="qm-row qm-between" style="font-size:18px"><span>Всего ('+ids.length+' '+(ids.length===1?"продавец":"продавцов")+')</span><b>'+money(total)+'</b></div>'+'<button class="btn btn-ghost btn-sm" data-act="cartClear" style="margin-top:6px">Очистить корзину</button></div>';
   return h;
 };
 document.addEventListener("change",function(e){var t=e.target;if(!t||!t.getAttribute||t.getAttribute("data-qty")==null)return;var id=t.getAttribute("data-qty"),v=parseFloat(String(t.value).replace(",","."));
@@ -2378,7 +2378,7 @@ document.addEventListener("click",function(e){var t=e.target.closest&&e.target.c
   setTimeout(function(){busy=0;cur="";sched()},400)},true);
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&path()==="/cart"){busy=0;cur="";sched()}});
 document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("[data-cartsend]");if(a&&noSize(cartGroups()[a.getAttribute("data-cartsend")]||[])){e.preventDefault();e.stopPropagation();toast("Выберите размер у товаров",1);return}if(a){var id=a.getAttribute("data-cartsend");SENT[id]=sig(cartGroups()[id]||[]);sentSave();setTimeout(function(){a.textContent="✓ Отправлено · отправить снова"},200)}});
-function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 14.11 00:42";f.appendChild(d)}
+function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 14.11 01:23";f.appendChild(d)}
 function enhNavCart(){
   var bn=document.querySelector(".bottomnav");if(bn){var a=bn.querySelector("a[data-qmnc]")||bn.querySelector('a[href="#/map"]');
     if(a){if(!a.hasAttribute("data-qmnc")){a.setAttribute("data-qmnc","1");a.setAttribute("href","#/cart");a.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();location.hash="#/cart";busy=0;cur="";sched()},true);a.innerHTML='<span class="nav-badge"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"></circle><circle cx="18" cy="20" r="1.5"></circle><path d="M3 4h2.5l2.2 11h10.6l2-8H6.5"></path></svg></span>Корзина'}
@@ -2411,7 +2411,7 @@ function soSumHtml(o){var sp=o.spendUsed!=null&&o.status==="done"?o.spendUsed:(o
 async function soAvail(u,oid){var bal=0,pend=0;try{var cr=await gQuery("credits",[["userId","==",u.uid]]);bal=cr.filter(function(c){return c.orgId===oid}).reduce(function(s,c){return s+left(c)},0);var mo=await gQuery("sorders",[["buyerId","==",u.uid]]);pend=mo.filter(function(x){return x.orgId===oid&&["new","accepted","ready","shipping"].indexOf(x.status)>=0}).reduce(function(s,x){return s+(x.spend||0)},0)}catch(e){}return Math.max(0,bal-pend)}
 function soMax(av,sum,R){return R.active?Math.max(0,Math.min(av,Math.floor(sum*(R.maxSpendPct||0)/100))):0}
 function soTotal(items){return Math.round((items||[]).reduce(function(s,i){return s+i.price*i.qty},0))}
-function soWa(o){var ph=String(o.orgPhone||"").replace(/\D/g,"");if(!ph)return "";var t="Заказ № "+o.num+" из QALA PVL\n"+(o.items||[]).map(function(i,k){return (k+1)+". "+i.title+(i.size?" (размер "+i.size+")":"")+(addTxt(i)?" ["+addTxt(i)+"]":"")+" — "+i.qty+" × "+money(i.price)}).join("\n")+"\nИтого: "+money(o.sum)+(o.delivery==="courier"?"\nДоставка: "+soDlTxt(o):"")+(o.spend?"\nБаллами: −"+pts(o.spend)+", к оплате "+money(o.sum-o.spend+soFee(o)):"")+"\n"+(o.delivery==="courier"?"Доставка: "+(o.address||""):"Самовывоз")+"\nТелефон: "+(o.phone||"")+"\nПроверьте заказ в приложении: раздел бизнеса → Заказы";return "https://wa.me/"+ph+"?text="+encodeURIComponent(t)}
+function soWa(o){var ph=String(o.orgPhone||"").replace(/\D/g,"");if(!ph)return "";var t="Заказ № "+o.num+" из QALA PVL\n"+(o.items||[]).map(function(i,k){return (k+1)+". "+i.title+(i.size?" (размер "+i.size+")":"")+(addTxt(i)?" ["+addTxt(i)+"]":"")+" — "+i.qty+" × "+money(i.price)}).join("\n")+"\nИтого: "+money(o.sum)+(o.delivery==="courier"?"\nДоставка: "+soDlTxt(o):"")+(o.spend?"\nБаллами: −"+pts(o.spend)+", к оплате "+money(o.sum-o.spend+soFee(o)):"")+"\n"+(o.delivery==="courier"?"Доставка: "+(o.address||""):"Самовывоз")+"\nТелефон: "+(o.phone||"")+"\n⏳ Клиент ожидает ответа"+(o.note?"\nКомментарий: "+o.note:"")+"\nОткрыть заказ в кабинете: "+location.href.split("#")[0]+"#/business/orders?o="+o.orgId+"&t=act&hl="+(o.id||"");return "https://wa.me/"+ph+"?text="+encodeURIComponent(t)}
 async function feePct(orgId){var r=null;try{r=await gGet("orgFees",orgId)}catch(e){}return r&&typeof r.pct==="number"?r.pct:8}
 function soNew(){return Math.round((Date.now()%900000)/10)+1000}
 VIEWS["/checkout"]=async function(){
@@ -2430,11 +2430,14 @@ VIEWS["/checkout"]=async function(){
   if(dm!=="courier")h+='<label class="qm-chk"><input type="radio" name="delivery" value="pickup" checked> Самовывоз</label>';
   if(dm==="courier"||dm==="both")h+='<label class="qm-chk"><input type="radio" name="delivery" value="courier"'+(dm==="courier"?" checked":"")+'> Доставка (адрес ниже)</label>';
   if(dm!=="pickup")h+='<div id="dl-box" data-sum="'+sum+'" data-fee="'+(R.dFee||0)+'" data-ask="'+(R.dFeeMode==="ask"?1:0)+'" data-free="'+(R.dFreeFrom||0)+'" style="margin:8px 0;padding:10px;background:#eef3ff;border-radius:10px"></div>';
-  h+='<label class="qm-f">Ваш телефон<input name="phone" type="tel" required placeholder="+7 ___ ___ __ __" value="'+esc(u.phone||"")+'"></label><label class="qm-f">Адрес доставки (если нужна доставка)<input name="address" placeholder="Улица, дом, квартира"></label><label class="qm-f">Комментарий<input name="note" maxlength="200"></label>';
-  h+='<div class="qm-muted" style="margin:6px 0">Оплата — напрямую продавцу (приложение деньги не принимает). Отменить можно до статуса «Собран». Баллы начислятся при выдаче по вашему QR.</div><button class="btn btn-primary" type="submit" style="width:100%">Оформить заказ</button></form>';
+  h+='<label class="qm-f">Ваш телефон<input name="phone" type="tel" required placeholder="+7 ___ ___ __ __" value="'+esc(u.phone||"")+'"></label><label class="qm-f" data-adr="1" style="display:'+(dm==='pickup'||dm==='both'?'none':'block')+'">Адрес доставки<input name="address" placeholder="Улица, дом, квартира"></label><label class="qm-f">Комментарий<input name="note" maxlength="200"></label>';
+  h+='<div class="qm-muted" style="margin:6px 0">Оплата — напрямую продавцу (приложение деньги не принимает). Отменить можно до статуса «Собран». Баллы начислятся при выдаче по вашему QR.</div><button class="btn btn-primary" type="submit" data-wa="1" style="width:100%">Оформить заказ и оповестить в WhatsApp</button><div class="qm-muted" style="margin-top:6px">Заявка сохранится в приложении и откроется WhatsApp с готовым сообщением продавцу.</div></form>';
   return h};
 document.addEventListener("input",function(e){var b=e.target.closest&&e.target.closest("[data-sp-box]");if(!b)return;var sum=Number(b.getAttribute("data-sum")),mx=Number(b.getAttribute("data-max")),v=Math.max(0,Math.min(mx,Math.round(Number(e.target.value)||0))),pv=b.querySelector("#sp-prev");pv.innerHTML=v>0?'<div class="qm-row qm-between"><span>Баллами</span><b>−'+pts(v)+'</b></div><div class="qm-row qm-between" style="font-size:18px"><span>К оплате</span><b>'+money(sum-v)+'</b></div><div class="qm-muted">Баллы за эту покупку не начисляются</div>':''});
-PF.checkout=async function(fd,f,u){
+var WAW=null;
+document.addEventListener("click",function(e){var b=e.target.closest&&e.target.closest('form[data-pform=checkout] button[type=submit]');if(!b)return;try{WAW=window.open("about:blank","_blank")}catch(x){WAW=null}},true);
+PF.checkout=async function(fd,f,u){try{return await PFcheckout(fd,f,u)}catch(e){if(WAW){try{WAW.close()}catch(x){}WAW=null}throw e}};
+async function PFcheckout(fd,f,u){
   var oid=String(fd.get("org")),items=cartGroups()[oid]||[];if(!items.length)throw new Error("Корзина пуста");if(noSize(items))throw new Error("Выберите размер");
   var o=await orgInfo(oid);if(!o.ownerId)throw new Error("Организация не найдена");if(o.ownerId===u.uid)throw new Error("Нельзя заказывать у своей организации");
   var R=await getRules(oid),dm=R.delivery||"pickup",del=String(fd.get("delivery")||"pickup");if(del==="courier"&&dm==="pickup")del="pickup";
@@ -2446,7 +2449,9 @@ PF.checkout=async function(fd,f,u){
   var dl=dlvCalc(R,d.sum,del);d.dMode=dl.mode;d.dFee=dl.fee;d.dFreeFrom=R.dFreeFrom||0;
   await gSet("sorders",id,d);
   var rest=cartGet().filter(function(i){return i.orgId!==oid});cartSave(rest);delete SENT[oid];sentSave();
-  BUYACT=1;location.hash="#/shop-orders?new="+id;return "Заказ № "+d.num+" оформлен"};
+  BUYACT=1;location.hash="#/shop-orders?new="+id;
+  var wl=soWa(Object.assign({id:id},d));if(wl){if(WAW){try{WAW.location.href=wl}catch(x){}WAW=null}}else if(WAW){try{WAW.close()}catch(x){}WAW=null}
+  return "Заказ № "+d.num+" оформлен"+(wl?". Откройте WhatsApp и отправьте сообщение продавцу":"")};
 VIEWS["/shop-orders"]=async function(){
   var u=me();if(!u)return head("Мои заказы","/")+needLogin();
   var os=(await gQuery("sorders",[["buyerId","==",u.uid]])).sort(function(a,b){return b.createdAt-a.createdAt}),nw=qs().get("new"),code="";
@@ -2535,7 +2540,7 @@ VIEWS["/business/orders"]=async function(){
   if(!L.length)return h+'<div class="qm-card qm-muted">Заказов нет</div>';
   var cs2=t==="act"?(await gQuery("couriers",[["ownerId","==",u.uid]])).filter(function(c){return c.orgId===org.id}):[];
   L.forEach(function(o){
-    h+='<div class="qm-card" style="margin-top:10px"><div class="qm-row qm-between"><b>№ '+o.num+' · '+esc(o.buyerName||"")+'</b>'+soBadge(o.status)+'</div><div class="qm-muted">'+dt(o.createdAt)+' · <a href="tel:'+esc(o.phone)+'">'+esc(o.phone)+'</a> · '+(o.delivery==="courier"?'Доставка: '+esc(o.address):'Самовывоз')+'</div>'+(o.note?'<div>Комментарий: '+esc(o.note)+'</div>':'')+soLines(o)+soSumHtml(o)+(o.status==="done"&&!o.settled?'<div style="color:#b42318;margin-top:4px">Баллы и комиссия не записаны: '+esc(SOERR[o.id]||"ещё не обработано")+' <button class="btn btn-secondary btn-sm" data-act="soRetry" data-id="'+o.id+'">Повторить</button></div>':'');
+    h+='<div class="qm-card" style="margin-top:10px'+(o.id===qs().get("hl")?';border:2px solid #12805c':'')+'"><div class="qm-row qm-between"><b>№ '+o.num+' · '+esc(o.buyerName||"")+'</b>'+soBadge(o.status)+'</div><div class="qm-muted">'+dt(o.createdAt)+' · <a href="tel:'+esc(o.phone)+'">'+esc(o.phone)+'</a> · '+(o.delivery==="courier"?'Доставка: '+esc(o.address):'Самовывоз')+'</div>'+(o.note?'<div>Комментарий: '+esc(o.note)+'</div>':'')+soLines(o)+soSumHtml(o)+(o.status==="done"&&!o.settled?'<div style="color:#b42318;margin-top:4px">Баллы и комиссия не записаны: '+esc(SOERR[o.id]||"ещё не обработано")+' <button class="btn btn-secondary btn-sm" data-act="soRetry" data-id="'+o.id+'">Повторить</button></div>':'');
     if(o.status==="done"&&o.settled)h+='<div class="qm-muted">Клиенту +'+pts(o.earn||0)+(o.refPoints?' · пригласившему +'+pts(o.refPoints):'')+' · комиссия '+money(o.fee||0)+' ('+(o.feePct||0)+'%)</div>';
     var b='';
     var needFee=o.delivery==="courier"&&o.dMode==="ask"&&typeof o.dFee!=="number"&&(o.status==="new"||o.status==="accepted");
@@ -2898,7 +2903,7 @@ async function pushInit(){var PN=CP("PushNotifications"),u=me();if(!CAP||!PN||!u
     await PN.register()}catch(e){console.warn("push",e)}}
 
 /* ===== СКАЧАТЬ ПРИЛОЖЕНИЕ ===== */
-var QM_BUILD="14.11 00:42",APP_VER=1,APK_URL="https://github.com/cabelNL/Qalapvl/releases/latest/download/qala-pvl.apk",SITE_URL="https://cabelnl.github.io/Qalapvl/";
+var QM_BUILD="14.11 01:23",APP_VER=1,APK_URL="https://github.com/cabelNL/Qalapvl/releases/latest/download/qala-pvl.apk",SITE_URL="https://cabelnl.github.io/Qalapvl/";
 VIEWS["/download"]=async function(){
   var ios=isIOS(),and=/android/i.test(navigator.userAgent),h=head("Скачать приложение","/profile");
   function step(n,t){return '<div style="display:flex;flex-wrap:nowrap;gap:10px;align-items:flex-start;margin-top:10px"><b class="qm-num">'+n+'</b><span style="flex:1;line-height:1.4">'+t+'</span></div>'}
