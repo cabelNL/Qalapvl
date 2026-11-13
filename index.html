@@ -2359,7 +2359,7 @@ document.addEventListener("click",function(e){var t=e.target.closest&&e.target.c
   setTimeout(function(){busy=0;cur="";sched()},400)},true);
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&path()==="/cart"){busy=0;cur="";sched()}});
 document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("[data-cartsend]");if(a&&noSize(cartGroups()[a.getAttribute("data-cartsend")]||[])){e.preventDefault();e.stopPropagation();toast("Выберите размер у товаров",1);return}if(a){var id=a.getAttribute("data-cartsend");SENT[id]=sig(cartGroups()[id]||[]);sentSave();setTimeout(function(){a.textContent="✓ Отправлено · отправить снова"},200)}});
-function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 13.11 08:31";f.appendChild(d)}
+function enhStamp(){if(document.getElementById("qm-ver"))return;var f=document.querySelector("footer");if(!f)return;var d=document.createElement("div");d.id="qm-ver";d.className="small muted";d.style.cssText="text-align:center;padding:6px";d.textContent="Версия сборки: 13.11 11:46";f.appendChild(d)}
 function enhNavCart(){
   var bn=document.querySelector(".bottomnav");if(bn){var a=bn.querySelector("a[data-qmnc]")||bn.querySelector('a[href="#/map"]');
     if(a){if(!a.hasAttribute("data-qmnc")){a.setAttribute("data-qmnc","1");a.setAttribute("href","#/cart");a.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();location.hash="#/cart";busy=0;cur="";sched()},true);a.innerHTML='<span class="nav-badge"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"></circle><circle cx="18" cy="20" r="1.5"></circle><path d="M3 4h2.5l2.2 11h10.6l2-8H6.5"></path></svg></span>Корзина'}
@@ -2783,15 +2783,17 @@ function hubHtml(){var u=me();if(!u)return '';var r=NTR||{},m=r.master,h='',nw=[
 var AC=null,NSND=0,NSARM=0;
 function sndPref(){try{return localStorage.getItem("qm:snd")!=="0"}catch(e){return true}}
 var SA=null,SAok=0;
-function sndWav(){var sr=22050,n=Math.floor(sr*.5),b=new ArrayBuffer(44+n*2),v=new DataView(b);function w(o,t){for(var i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))}
+function sndWav(){var sr=32000,n=Math.floor(sr*.9),b=new ArrayBuffer(44+n*2),v=new DataView(b),y=new Float32Array(n);function w(o,t){for(var i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))}
+ [[0,1568,7],[.085,2093,5.5]].forEach(function(h){var s0=Math.floor(sr*h[0]),f=h[1],dc=h[2];for(var i=0;s0+i<n&&i<sr*.8;i++){var t=i/sr,e=Math.exp(-t*dc)*Math.min(1,t/.002);y[s0+i]+=(Math.sin(2*Math.PI*f*t)+.45*Math.sin(2*Math.PI*f*2.76*t)+.2*Math.sin(2*Math.PI*f*5.4*t)+.25*Math.sin(2*Math.PI*f*2*t))*e}});
+ var mx=0,k;for(k=0;k<n;k++)mx=Math.max(mx,Math.abs(y[k]));
  w(0,"RIFF");v.setUint32(4,36+n*2,true);w(8,"WAVEfmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,"data");v.setUint32(40,n*2,true);
- for(var i=0;i<n;i++){var t=i/sr,f=t<.2?880:1175,tt=t<.2?t:t-.2,env=Math.min(1,tt/.01)*Math.exp(-tt*9);var x=Math.sin(2*Math.PI*f*t)*env*.6;v.setInt16(44+i*2,Math.max(-1,Math.min(1,x))*32767,true)}
- var u="",bytes=new Uint8Array(b);for(var k=0;k<bytes.length;k++)u+=String.fromCharCode(bytes[k]);return "data:audio/wav;base64,"+btoa(u)}
+ for(k=0;k<n;k++)v.setInt16(44+k*2,Math.max(-1,Math.min(1,y[k]/mx*.85))*32767,true);
+ var u="",bytes=new Uint8Array(b);for(k=0;k<bytes.length;k++)u+=String.fromCharCode(bytes[k]);return "data:audio/wav;base64,"+btoa(u)}
 function sndEl(){if(!SA){try{SA=new Audio(sndWav());SA.preload="auto";SA.setAttribute("playsinline","")}catch(e){}}return SA}
 function sndUnlockEl(){if(SAok)return;var a=sndEl();if(!a)return;try{a.muted=true;var p=a.play();var done=function(){try{a.pause();a.currentTime=0;a.muted=false;SAok=1}catch(e){}};if(p&&p.then)p.then(done,function(){a.muted=false});else done()}catch(e){}}
 function sndUnlock(){sndUnlockEl();try{if(!AC){var C=window.AudioContext||window.webkitAudioContext;if(C)AC=new C()}if(AC&&AC.state==="suspended")AC.resume()}catch(e){}}
 ["touchstart","click","keydown"].forEach(function(ev){document.addEventListener(ev,sndUnlock,{passive:true})});
-function ntSound(force){if(!force&&(document.hidden||!sndPref()))return;try{var el=sndEl();if(el&&SAok){el.muted=false;el.currentTime=0;var pr=el.play();if(pr&&pr.catch)pr.catch(function(){});if(!force&&navigator.vibrate)navigator.vibrate([60,40,60]);return}}catch(e){}try{sndUnlock();if(!AC)return;var t=AC.currentTime;[[880,0],[1175,.14]].forEach(function(n){var o=AC.createOscillator(),g=AC.createGain();o.type="sine";o.frequency.value=n[0];g.gain.setValueAtTime(.0001,t+n[1]);g.gain.exponentialRampToValueAtTime(.25,t+n[1]+.02);g.gain.exponentialRampToValueAtTime(.0001,t+n[1]+.22);o.connect(g);g.connect(AC.destination);o.start(t+n[1]);o.stop(t+n[1]+.25)});if(!force&&navigator.vibrate)navigator.vibrate([60,40,60])}catch(e){}}
+function ntSound(force){if(!force&&(document.hidden||!sndPref()))return;try{var el=sndEl();if(el&&SAok){el.muted=false;el.currentTime=0;var pr=el.play();if(pr&&pr.catch)pr.catch(function(){});setTimeout(function(){try{el.currentTime=0;var p2=el.play();if(p2&&p2.catch)p2.catch(function(){})}catch(e){}},900);if(!force&&navigator.vibrate)navigator.vibrate([60,40,60]);return}}catch(e){}try{sndUnlock();if(!AC)return;var t=AC.currentTime;[[1568,0],[2093,.085],[1568,.9],[2093,.985]].forEach(function(n){var o=AC.createOscillator(),g=AC.createGain();o.type="sine";o.frequency.value=n[0];g.gain.setValueAtTime(.0001,t+n[1]);g.gain.exponentialRampToValueAtTime(.25,t+n[1]+.02);g.gain.exponentialRampToValueAtTime(.0001,t+n[1]+.22);o.connect(g);g.connect(AC.destination);o.start(t+n[1]);o.stop(t+n[1]+.25)});if(!force&&navigator.vibrate)navigator.vibrate([60,40,60])}catch(e){}}
 ACT.sndToggle=function(){var on=sndPref();try{localStorage.setItem("qm:snd",on?"0":"1")}catch(e){}if(!on)ntSound(true);toast(on?"Звук уведомлений выключен":"Звук уведомлений включён");updNT()};
 window.__nsd=function(){return[NSARM,NSND,ntTotal(),SON,NEWC,document.hidden,!!AC,AC&&AC.state]};function sndWatch(){if(NSARM!==2)return;var t0=ntTotal();if(t0>NSND)ntSound();NSND=t0}setInterval(sndWatch,3000);function updNT(){sndWatch();try{hideDupes()}catch(e){}var c=document.querySelector("[data-qmp]");if(c&&me()){var h=hubHtml();if(c.__h!==h){c.innerHTML=h;c.__h=h}}try{applyBadge()}catch(e){}}
 ["/orders:cl","/shop-orders:so","/manager:mg","/manager/find:mg"].forEach(function(s){var a=s.split(":"),f=VIEWS[a[0]];if(f)VIEWS[a[0]]=async function(){try{ntMark(a[1])}catch(e){}return f.apply(this,arguments)}});
@@ -2849,7 +2851,7 @@ async function pushInit(){var PN=CP("PushNotifications"),u=me();if(!CAP||!PN||!u
     await PN.register()}catch(e){console.warn("push",e)}}
 
 /* ===== СКАЧАТЬ ПРИЛОЖЕНИЕ ===== */
-var QM_BUILD="13.11 08:31",APP_VER=1,APK_URL="https://github.com/cabelNL/Qalapvl/releases/latest/download/qala-pvl.apk",SITE_URL="https://cabelnl.github.io/Qalapvl/";
+var QM_BUILD="13.11 11:46",APP_VER=1,APK_URL="https://github.com/cabelNL/Qalapvl/releases/latest/download/qala-pvl.apk",SITE_URL="https://cabelnl.github.io/Qalapvl/";
 VIEWS["/download"]=async function(){
   var ios=isIOS(),and=/android/i.test(navigator.userAgent),h=head("Скачать приложение","/profile");
   function step(n,t){return '<div style="display:flex;flex-wrap:nowrap;gap:10px;align-items:flex-start;margin-top:10px"><b class="qm-num">'+n+'</b><span style="flex:1;line-height:1.4">'+t+'</span></div>'}
